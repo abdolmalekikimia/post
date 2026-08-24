@@ -21,6 +21,7 @@ class Settings:
     barcode: str = os.getenv("BARCODE", "123456789012345678901234")
     timeout_seconds: float = float(os.getenv("TIMEOUT_SECONDS", "10"))
     inbound_timeout_ms: int = int(os.getenv("INBOUND_TIMEOUT_MS", "5000"))
+    api_delay_seconds: float = float(os.getenv("API_DELAY_SECONDS", "5"))
 
 
 settings = Settings()

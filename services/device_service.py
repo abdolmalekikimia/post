@@ -20,38 +20,63 @@ class DeviceService:
         }
 
     def auth(self, device_id: str, device_token: str) -> dict[str, Any]:
-        return self.client.send_message(
-            self._envelope(
-                "auth",
-                {"deviceId": device_id, "deviceToken": device_token},
-            )
+        envelope = self._envelope(
+            "auth",
+            {"deviceId": device_id, "deviceToken": device_token},
+        )
+        return self.client.invoke(
+            "Auth",
+            [envelope],
+            invocation_id=envelope["correlationId"],
         )
 
     def register_inbound(
         self,
         barcode: str,
         timeout_ms: int = 5000,
+        physical_attributes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return self.client.send_message(
-            self._envelope(
-                "inbound.register",
-                {
-                    "barcodes": [barcode],
-                    "readTimestamp": datetime.now(timezone.utc)
-                    .isoformat()
-                    .replace("+00:00", "Z"),
-                    "physicalAttributes": {
-                        "weightGrams": 1500,
-                        "dimensions": {
-                            "lengthMm": 300,
-                            "widthMm": 200,
-                            "heightMm": 100,
-                        },
-                    },
-                    "parcelType": None,
-                    "supplementaryData": None,
-                    "images": None,
-                    "timeoutMs": timeout_ms,
+        return self.register_inbound_barcodes(
+            barcodes=[barcode],
+            timeout_ms=timeout_ms,
+            physical_attributes=physical_attributes,
+        )
+
+    def register_inbound_barcodes(
+        self,
+        barcodes: list[str],
+        timeout_ms: int = 5000,
+        physical_attributes: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if not barcodes:
+            raise ValueError("At least one barcode is required")
+
+        if physical_attributes is None:
+            physical_attributes = {
+                "weightGrams": 1500,
+                "dimensions": {
+                    "lengthMm": 300,
+                    "widthMm": 200,
+                    "heightMm": 100,
                 },
-            )
+            }
+
+        envelope = self._envelope(
+            "inbound.register",
+            {
+                "barcodes": barcodes,
+                "readTimestamp": datetime.now(timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z"),
+                "physicalAttributes": physical_attributes,
+                "parcelType": None,
+                "supplementaryData": None,
+                "images": None,
+                "timeoutMs": timeout_ms,
+            },
+        )
+        return self.client.invoke(
+            "RegisterInbound",
+            [envelope],
+            invocation_id=envelope["correlationId"],
         )

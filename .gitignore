@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.idea/
 
 # Local credentials and environment overrides
 config/test.env
+postman/EPS-49-local.postman_environment.json

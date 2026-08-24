@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from assertions.signalr_assertions import assert_success_response
+from assertions.signalr_assertions import assert_success_response, response_field
 from config.settings import settings
 from flows.device_auth_flow import run_happy_path
 
@@ -15,5 +15,5 @@ def test_auth_and_register_inbound_success():
     result = run_happy_path(settings)
 
     assert_success_response(result.auth_response, "Auth")
-    assert result.auth_response.get("sessionId")
+    assert response_field(result.auth_response, "sessionId")
     assert_success_response(result.register_response, "RegisterInbound")
