@@ -4,7 +4,7 @@ import pytest
 
 from assertions.core_history_assertions import assert_core_history_response
 from assertions.signalr_assertions import response_payload
-from flows.core_history_flow import CORE_HISTORY_CASES, run_core_history_flow
+from flows.inbound.core_history_flow import CORE_HISTORY_CASES, run_core_history_flow
 
 
 @pytest.mark.e2e

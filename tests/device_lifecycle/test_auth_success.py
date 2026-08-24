@@ -4,7 +4,7 @@ import pytest
 
 from assertions.signalr_assertions import assert_success_response, response_field
 from config.settings import settings
-from flows.device_auth_flow import run_happy_path
+from flows.device_lifecycle.device_auth_flow import run_happy_path
 
 
 @pytest.mark.e2e

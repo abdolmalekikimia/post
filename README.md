@@ -1,69 +1,97 @@
-# EPS-49 Python happy-path test
+# Sorting Device & Postal Integration Tests
 
-این پروژه فقط مسیر موفق EPS-49 را تست می‌کند:
+نام منطقی پروژه:
 
-1. ورود ادمین
-2. ثبت IP دستگاه
-3. اتصال WebSocket
-4. ارسال Auth
-5. ارسال RegisterInbound
+`sorting-device-postal-integration-tests`
+
+این پروژه، تست‌های Python برای سامانه مدیریت دستگاه‌های سورتینگ و تعامل آن با سامانه‌های پستی است. ساختار پروژه بر اساس سند «فرآیندهای عملیاتی و تعاملات سامانه مدیریت دستگاه‌های سورتینگ با سامانه‌های پستی» طراحی شده است.
+
+در وضعیت فعلی، بخش‌های زیر توسعه داده شده‌اند:
+
+- اتصال WebSocket/SignalR دستگاه
+- ورود ادمین و ثبت IP دستگاه
+- احراز هویت دستگاه
+- ثبت وارده
+- اعتبارسنجی بارکدهای ۱۴، ۲۴ و ۳۷ رقمی
+- سناریوهای EPS-53 مربوط به تاریخچه Core
+- سناریوهای EPS-55 مربوط به Postal، Destination و Merge
+- اجرای وابسته؛ در صورت دریافت نتیجه غیرمنتظره، سناریوی بعدی اجرا نمی‌شود
+- گزارش مرحله‌ای شامل وضعیت موفق، ناموفق و اجرا‌نشده
+
+## ساختار پروژه
+
+```text
+post/
+├── config/                 # تنظیمات اجرا و environment تست
+├── clients/                # کلاینت‌های REST و WebSocket/SignalR
+├── services/               # سرویس‌های ادمین و دستگاه
+├── flows/
+│   ├── device_lifecycle/   # ثبت، تنظیم، اتصال و احراز هویت دستگاه
+│   ├── inbound/            # ثبت وارده و تاریخچه مرسوله
+│   ├── destination/        # مقصد عملیاتی و شوتر - فاز بعدی
+│   ├── bag/                # بستن کیسه و لیبل - فاز بعدی
+│   ├── dispatch/           # بستن دپش - فاز بعدی
+│   └── reporting/          # گزارش‌های عملیاتی و مدیریتی - فاز بعدی
+├── assertions/             # بررسی پاسخ‌ها و قراردادها
+├── tests/
+│   ├── device_lifecycle/   # تست چرخه عمر دستگاه
+│   ├── inbound/            # تست ثبت وارده و Core history
+│   ├── destination/        # آماده توسعه
+│   ├── bag/                # آماده توسعه
+│   ├── dispatch/           # آماده توسعه
+│   ├── reporting/          # آماده توسعه
+│   └── unit/               # تست‌های واحد
+└── utils/                  # ابزارهای عمومی و logging
+```
+
+جزئیات وضعیت توسعه و نگاشت ساختار به فصل‌های سند در [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) ثبت شده است.
 
 ## راه‌اندازی
 
 ```powershell
-python -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-مقادیر واقعی `ADMIN_PASSWORD` و `DEVICE_TOKEN` را در `config/test.env` وارد کنید.
-همچنین دستگاه باید در دیتابیس seed شده، فعال باشد و IP آن با `DEVICE_IP` یکسان باشد.
+فایل `config/test.env` را از روی `config/test.env.example` بساز و مقدارهای محیط تست را وارد کن. این فایل در Git commit نمی‌شود.
 
-## اجرای تست
+دستگاه باید در سرویس تعریف و فعال باشد، همگام‌سازی سیستم لبه انجام شده باشد و IP کلاینت تست با IP ثبت‌شده دستگاه یکسان باشد.
+
+## اجرای تست‌ها
+
+تست‌های واحد:
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests/unit -q
+```
+
+مسیر موفق پایه:
 
 ```powershell
 $env:RUN_E2E="1"
-python -m pytest -q
+.venv\Scripts\python.exe -m pytest tests/device_lifecycle -q -s
 ```
 
-یا مستقیماً:
+سناریوهای EPS-53:
 
 ```powershell
-python -m flows.device_auth_flow
+$env:RUN_E2E="1"
+$env:RUN_EPS53="1"
+.venv\Scripts\python.exe -m pytest tests/inbound/test_core_history.py -q -s
 ```
 
-## اجرای مسیر موفق در Postman
-
-فایل‌های Postman در پوشهٔ `postman` قرار دارند:
-
-- `EPS-49-happy-path.postman_collection.json`
-- `EPS-49-local.postman_environment.example.json`
-
-برای اجرای محلی، environment نمونه را در Postman import کن و مقدارهای `adminPassword` و `deviceToken` را در Postman وارد کن. سپس این درخواست‌ها را به‌ترتیب اجرا کن:
-
-1. `1.1 Login`
-2. `1.2 Update Device IP`
-3. در `2.1 Auth - success` روی `Connect` بزن و پیام Auth را ارسال کن.
-4. پاسخ Auth باید `status=0` و `sessionId` داشته باشد.
-5. بدون بستن همان اتصال، payload درخواست `2.2 RegisterInbound - success` را در همان تب WebSocket ارسال کن.
-6. پاسخ RegisterInbound باید `status=0` باشد.
-
-فایل `EPS-49-local.postman_environment.json` برای اجرای محلی ساخته می‌شود و در Git نادیده گرفته شده است؛ credentialها داخل فایل commit نمی‌شوند.
-
-در تست Python بین هر عملیات API/WebSocket پنج ثانیه فاصله وجود دارد. این مقدار از متغیر `API_DELAY_SECONDS` در `config/test.env` خوانده می‌شود و در صورت نیاز قابل تغییر است.
-
-## EPS-55 Python orchestration
-
-سناریوهای EPS-55 در `flows/eps55_flow.py` پیاده‌سازی شده‌اند و شامل اعتبارسنجی چندبارکدی،
-ثبت پست، Polling/Pending، جستجوی مقصد ۱۴رقمی و merge با نتیجهٔ Core هستند.
-هر سناریو بلافاصله بعد از پاسخ validate می‌شود؛ اگر نتیجهٔ مورد انتظار نگیرد، سناریوی بعدی اجرا نمی‌شود.
-
-قبل از اجرای E2E، Mockهای Postal/Core را طبق `EPS-55-test-requirements.md` در `appsettings.json`
-تنظیم و سرویس را restart کن. سپس:
+سناریوهای EPS-55:
 
 ```powershell
 $env:RUN_E2E="1"
 $env:RUN_EPS55="1"
-.venv\Scripts\python.exe -m pytest tests/inbound_orchestration -q -s
+.venv\Scripts\python.exe -m pytest tests/inbound/test_eps55.py -q -s
 ```
 
-برای اجرای تست‌های پایهٔ EPS-49 و EPS-53 نیز همین اصل برقرار است: Login، Update IP،
-SignalR handshake و Auth باید موفق شوند تا مرحلهٔ بعدی اجرا شود.
+قبل از اجرای تست‌های E2E، Mockهای Postal/Core را مطابق نیازمندی تست تنظیم و سرویس را restart کن.
+
+بعد از اجرای هر Flow، گزارش مرحله‌ای چاپ می‌شود. اگر یک مرحله شکست بخورد، همان مرحله با وضعیت `FAILED`
+ثبت می‌شود و تمام مراحل بعدی با وضعیت `NOT_EXECUTED` گزارش می‌شوند.
+
+## وضعیت فازهای بعدی
+
+فرآیندهای ثبت مقصد عملیاتی، ثبت صادره، بستن کیسه، چاپ مجدد لیبل، بستن دپش، همگام‌سازی آفلاین و گزارش‌گیری در ساختار پروژه رزرو شده‌اند و بعد از دریافت قرارداد رسمی APIها و قواعد کسب‌وکار شرکت پست توسعه داده خواهند شد.

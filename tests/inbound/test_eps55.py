@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from flows.eps55_flow import EPS55_CASES, run_eps55_flow
+from flows.inbound.eps55_flow import EPS55_CASES, run_eps55_flow
 
 
 @pytest.mark.e2e
