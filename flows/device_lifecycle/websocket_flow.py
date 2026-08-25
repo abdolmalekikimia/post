@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 import time
 from typing import Any
@@ -11,33 +13,39 @@ from services.device_service import DeviceService
 from utils.step_report import ExecutionReport, exchange_detail, run_step
 
 
-def wait_between_api_calls(delay_seconds: float) -> None:
-    if delay_seconds > 0:
-        time.sleep(delay_seconds)
-
-
 @dataclass
-class HappyPathResult:
+class WebSocketFlowResult:
     admin_token: str
+    connection_response: dict[str, Any]
     auth_response: dict[str, Any]
     register_response: dict[str, Any]
     report: ExecutionReport
 
 
-def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
-    report = ExecutionReport("EPS-49 happy path")
+def wait_between_api_calls(delay_seconds: float) -> None:
+    if delay_seconds > 0:
+        time.sleep(delay_seconds)
+
+
+def run_websocket_flow(
+    run_settings: Settings = settings,
+) -> WebSocketFlowResult:
+    """Run a focused WebSocket/SignalR transport and device-message flow."""
+    report = ExecutionReport("WebSocket device flow")
     report.register(
         "1. Admin Login - POST /admin/login",
         "2. Update Device IP - PUT /admin/devices/{deviceId}/ip",
-        "3. SignalR Connect/Handshake - WebSocket /ws/device",
-        "4. Device Authentication - Auth",
-        "5. Inbound Registration - RegisterInbound",
+        "3. WebSocket Connect/Handshake - /ws/device",
+        "4. WebSocket Auth Invocation - Auth",
+        "5. WebSocket Inbound Invocation - RegisterInbound",
     )
+
     rest_client = RestClient(
         run_settings.base_url,
         run_settings.timeout_seconds,
     )
     admin = AdminService(rest_client)
+
     admin_token = run_step(
         report,
         "1. Admin Login - POST /admin/login",
@@ -45,7 +53,7 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
             run_settings.admin_username,
             run_settings.admin_password,
         ),
-        success_message="ورود ادمین موفق شد؛ توکن دریافت شد و نمایش داده نمی‌شود.",
+        success_message="ورود ادمین موفق شد.",
         detail=lambda _: exchange_detail(rest_client.last_exchange),
         error_detail=lambda _: exchange_detail(rest_client.last_exchange),
     )
@@ -65,13 +73,16 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
     )
     wait_between_api_calls(run_settings.api_delay_seconds)
 
-    ws = DeviceWebSocketClient(run_settings.ws_url, run_settings.timeout_seconds)
+    ws = DeviceWebSocketClient(
+        run_settings.ws_url,
+        run_settings.timeout_seconds,
+    )
     try:
-        run_step(
+        connection_response = run_step(
             report,
-            "3. SignalR Connect/Handshake - WebSocket /ws/device",
+            "3. WebSocket Connect/Handshake - /ws/device",
             ws.connect,
-            success_message="اتصال WebSocket و SignalR handshake موفق شد.",
+            success_message="WebSocket متصل شد و handshake موفق شد.",
             detail=lambda _: exchange_detail(ws.last_exchange),
             error_detail=lambda error: {
                 "error": f"{type(error).__name__}: {error}",
@@ -79,7 +90,6 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
             },
         )
         device = DeviceService(ws)
-        wait_between_api_calls(run_settings.api_delay_seconds)
 
         def authenticate() -> dict[str, Any]:
             response = device.auth(
@@ -95,18 +105,13 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
 
         auth_response = run_step(
             report,
-            "4. Device Authentication - Auth",
+            "4. WebSocket Auth Invocation - Auth",
             authenticate,
-            success_message="احراز هویت دستگاه موفق شد.",
+            success_message="پیام Auth از طریق WebSocket موفق شد.",
             detail=lambda _: exchange_detail(ws.last_exchange),
             error_detail=lambda error: {
                 "error": f"{type(error).__name__}: {error}",
-                "payloadSent": exchange_detail(ws.last_exchange).get(
-                    "payloadSent"
-                ),
-                "responseReceived": exchange_detail(ws.last_exchange).get(
-                    "responseReceived"
-                ),
+                **exchange_detail(ws.last_exchange),
             },
         )
         wait_between_api_calls(run_settings.api_delay_seconds)
@@ -121,33 +126,30 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
 
         register_response = run_step(
             report,
-            "5. Inbound Registration - RegisterInbound",
+            "5. WebSocket Inbound Invocation - RegisterInbound",
             register_inbound,
-            success_message="ثبت وارده موفق شد.",
+            success_message=(
+                "پیام RegisterInbound از طریق WebSocket موفق شد."
+            ),
             detail=lambda _: exchange_detail(ws.last_exchange),
             error_detail=lambda error: {
                 "error": f"{type(error).__name__}: {error}",
-                "payloadSent": exchange_detail(ws.last_exchange).get(
-                    "payloadSent"
-                ),
-                "responseReceived": exchange_detail(ws.last_exchange).get(
-                    "responseReceived"
-                ),
+                **exchange_detail(ws.last_exchange),
             },
         )
     finally:
         ws.close()
 
     report.print()
-    return HappyPathResult(
-        admin_token,
-        auth_response,
-        register_response,
-        report,
+    return WebSocketFlowResult(
+        admin_token=admin_token,
+        connection_response=connection_response,
+        auth_response=auth_response,
+        register_response=register_response,
+        report=report,
     )
 
 
 if __name__ == "__main__":
-    result = run_happy_path()
-    print("Auth response:", result.auth_response)
-    print("RegisterInbound response:", result.register_response)
+    result = run_websocket_flow()
+    print(result.report.render())

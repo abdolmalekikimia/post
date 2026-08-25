@@ -4,6 +4,7 @@ from utils.step_report import (
     ExecutionReport,
     FlowExecutionError,
     StepStatus,
+    exchange_detail,
     format_detail,
     run_step,
 )
@@ -70,3 +71,24 @@ def test_report_contains_exact_detail_and_redacts_credentials():
     assert format_detail({"nested": {"password": "secret"}}) == (
         '{"nested": {"password": "<redacted>"}}'
     )
+
+
+def test_exchange_detail_contains_sent_payload_and_received_response():
+    exchange = {
+        "request": {
+            "target": "Auth",
+            "arguments": [{"messageType": "auth"}],
+        },
+        "result": {"status": 2, "errorMessage": "invalid device credentials"},
+    }
+
+    assert exchange_detail(exchange) == {
+        "payloadSent": {
+            "target": "Auth",
+            "arguments": [{"messageType": "auth"}],
+        },
+        "responseReceived": {
+            "status": 2,
+            "errorMessage": "invalid device credentials",
+        },
+    }

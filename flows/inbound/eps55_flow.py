@@ -9,7 +9,7 @@ from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
 from services.admin_service import AdminService
 from services.device_service import DeviceService
-from utils.step_report import ExecutionReport, run_step
+from utils.step_report import ExecutionReport, exchange_detail, run_step
 
 
 MATCHING_37_DIGIT_BARCODE = (
@@ -199,9 +199,11 @@ def run_eps55_flow(
             for index, case in enumerate(cases)
         ),
     )
-    admin = AdminService(
-        RestClient(run_settings.base_url, run_settings.timeout_seconds)
+    rest_client = RestClient(
+        run_settings.base_url,
+        run_settings.timeout_seconds,
     )
+    admin = AdminService(rest_client)
     admin_token = run_step(
         report,
         "1. Admin Login - POST /admin/login",
@@ -209,7 +211,9 @@ def run_eps55_flow(
             run_settings.admin_username,
             run_settings.admin_password,
         ),
-        detail="ورود ادمین موفق شد؛ توکن دریافت شد و برای امنیت در گزارش نمایش داده نمی‌شود.",
+        success_message="ورود ادمین موفق شد؛ توکن دریافت شد و نمایش داده نمی‌شود.",
+        detail=lambda _: exchange_detail(rest_client.last_exchange),
+        error_detail=lambda _: exchange_detail(rest_client.last_exchange),
     )
     wait_between_api_calls(run_settings.api_delay_seconds)
 
@@ -222,6 +226,8 @@ def run_eps55_flow(
             admin_token,
         ),
         success_message="ثبت IP دستگاه موفق شد.",
+        detail=lambda _: exchange_detail(rest_client.last_exchange),
+        error_detail=lambda _: exchange_detail(rest_client.last_exchange),
     )
     wait_between_api_calls(run_settings.api_delay_seconds)
 
@@ -232,6 +238,11 @@ def run_eps55_flow(
             "3. SignalR Connect/Handshake - WebSocket /ws/device",
             ws.connect,
             success_message="اتصال WebSocket و SignalR handshake موفق شد.",
+            detail=lambda _: exchange_detail(ws.last_exchange),
+            error_detail=lambda error: {
+                "error": f"{type(error).__name__}: {error}",
+                "lastExchange": exchange_detail(ws.last_exchange),
+            },
         )
         device = DeviceService(ws)
         wait_between_api_calls(run_settings.api_delay_seconds)
@@ -253,6 +264,11 @@ def run_eps55_flow(
             "4. Device Authentication - Auth",
             authenticate,
             success_message="احراز هویت دستگاه موفق شد.",
+            detail=lambda _: exchange_detail(ws.last_exchange),
+            error_detail=lambda error: {
+                "error": f"{type(error).__name__}: {error}",
+                **exchange_detail(ws.last_exchange),
+            },
         )
 
         responses: dict[str, dict[str, Any]] = {}
@@ -289,6 +305,11 @@ def run_eps55_flow(
                 success_message=(
                     f"سناریوی {case.name} با نتیجه مورد انتظار موفق شد."
                 ),
+                detail=lambda _: exchange_detail(ws.last_exchange),
+                error_detail=lambda error: {
+                    "error": f"{type(error).__name__}: {error}",
+                    **exchange_detail(ws.last_exchange),
+                },
             )
     finally:
         ws.close()

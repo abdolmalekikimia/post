@@ -36,8 +36,13 @@ def test_signalr_handshake_and_invocation():
         result = client.invoke("Auth", [{"messageType": "auth"}], "a1")
         client.close()
 
-    assert connection_details["protocol"] == {"protocol": "json", "version": 1}
-    assert connection_details["handshakeResponse"] == [{}]
+    assert connection_details["request"] == {"protocol": "json", "version": 1}
+    assert connection_details["response"] == [{}]
+    assert client.last_exchange["response"] == {
+        "type": 3,
+        "invocationId": "a1",
+        "result": {"status": 0, "sessionId": "session-1"},
+    }
     assert result == {"status": 0, "sessionId": "session-1"}
     assert fake_socket.sent == [
         '{"protocol":"json","version":1}\x1e',

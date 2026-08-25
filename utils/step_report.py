@@ -126,6 +126,15 @@ class FlowExecutionError(AssertionError):
 
 T = TypeVar("T")
 Detail = str | Callable[[T], str]
+ErrorDetail = Callable[[Exception], object]
+
+
+def exchange_detail(exchange: dict[str, object]) -> dict[str, object]:
+    """Return the request/response pair shown for one API or WebSocket step."""
+    return {
+        "payloadSent": exchange.get("request"),
+        "responseReceived": exchange.get("result", exchange.get("response")),
+    }
 
 
 def format_detail(value: object) -> str:
@@ -169,18 +178,22 @@ def run_step(
     action: Callable[[], T],
     detail: Detail | None = None,
     success_message: str = "",
+    error_detail: ErrorDetail | None = None,
 ) -> T:
     started_at = time.monotonic()
     try:
         result = action()
     except Exception as exc:
+        detail_value: object = (
+            error_detail(exc)
+            if error_detail is not None
+            else f"خطای دقیق مرحله: {type(exc).__name__}: {exc}"
+        )
         report.failed(
             step_name,
             time.monotonic() - started_at,
             f"{type(exc).__name__}: {exc}",
-            detail=(
-                f"خطای دقیق مرحله: {type(exc).__name__}: {exc}"
-            ),
+            detail=format_detail(detail_value),
         )
         report.mark_remaining_not_executed()
         report.print()

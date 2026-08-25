@@ -21,16 +21,23 @@ class DeviceWebSocketClient:
         self.ws_url = f"{ws_url.rstrip('/')}/ws/device"
         self.timeout = timeout
         self._socket: WebSocket | None = None
+        self.last_exchange: dict[str, Any] = {}
 
     def connect(self) -> dict[str, Any]:
         self._socket = create_connection(self.ws_url, timeout=self.timeout)
+        self.last_exchange = {
+            "webSocketUrl": self.ws_url,
+            "request": self.JSON_PROTOCOL,
+        }
         self._send_frame(self.JSON_PROTOCOL)
         handshake_frames = self._receive_handshake()
-        return {
+        details = {
             "webSocketUrl": self.ws_url,
-            "protocol": self.JSON_PROTOCOL,
-            "handshakeResponse": handshake_frames,
+            "request": self.JSON_PROTOCOL,
+            "response": handshake_frames,
         }
+        self.last_exchange = details
+        return details
 
     def close(self) -> None:
         if self._socket is not None:
@@ -107,6 +114,7 @@ class DeviceWebSocketClient:
 
     def _receive_handshake(self) -> list[dict[str, Any]]:
         frames = self._receive_frames()
+        self.last_exchange["response"] = frames
         for frame in frames:
             if frame.get("error"):
                 raise RuntimeError(f"SignalR handshake failed: {frame['error']}")
@@ -128,14 +136,17 @@ class DeviceWebSocketClient:
             raise RuntimeError("WebSocket is not connected")
 
         invocation_id = invocation_id or str(uuid4())
-        self._send_frame(
-            {
-                "type": 1,
-                "invocationId": invocation_id,
-                "target": target,
-                "arguments": arguments,
-            }
-        )
+        request = {
+            "type": 1,
+            "invocationId": invocation_id,
+            "target": target,
+            "arguments": arguments,
+        }
+        self.last_exchange = {
+            "webSocketUrl": self.ws_url,
+            "request": request,
+        }
+        self._send_frame(request)
 
         deadline = time.monotonic() + self.timeout
         while time.monotonic() < deadline:
@@ -155,6 +166,7 @@ class DeviceWebSocketClient:
                     continue
 
                 if frame_type == 7:
+                    self.last_exchange["response"] = frame
                     raise RuntimeError(
                         f"SignalR closed the connection: {frame.get('error')}"
                     )
@@ -166,6 +178,7 @@ class DeviceWebSocketClient:
                     continue
 
                 if frame.get("error"):
+                    self.last_exchange["response"] = frame
                     raise RuntimeError(
                         f"SignalR invocation '{target}' failed: {frame['error']}"
                     )
@@ -177,6 +190,12 @@ class DeviceWebSocketClient:
                         f"result: {frame}"
                     )
 
+                self.last_exchange = {
+                    "webSocketUrl": self.ws_url,
+                    "request": request,
+                    "response": frame,
+                    "result": result,
+                }
                 return result
 
         raise TimeoutError(

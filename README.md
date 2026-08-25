@@ -15,8 +15,10 @@
 - اعتبارسنجی بارکدهای ۱۴، ۲۴ و ۳۷ رقمی
 - سناریوهای EPS-53 مربوط به تاریخچه Core
 - سناریوهای EPS-55 مربوط به Postal، Destination و Merge
+- Flow مستقل تست WebSocket/SignalR دستگاه
 - اجرای وابسته؛ در صورت دریافت نتیجه غیرمنتظره، سناریوی بعدی اجرا نمی‌شود
 - گزارش مرحله‌ای شامل وضعیت موفق، ناموفق و اجرا‌نشده
+- ثبت payload ارسالی و response دریافتی برای هر مرحله
 
 ## ساختار پروژه
 
@@ -87,10 +89,19 @@ $env:RUN_EPS55="1"
 .venv\Scripts\python.exe -m pytest tests/inbound/test_eps55.py -q -s
 ```
 
+Flow مستقل WebSocket/SignalR:
+
+```powershell
+$env:RUN_E2E="1"
+.venv\Scripts\python.exe -m pytest tests/device_lifecycle/test_websocket_flow.py -q -s
+```
+
 قبل از اجرای تست‌های E2E، Mockهای Postal/Core را مطابق نیازمندی تست تنظیم و سرویس را restart کن.
 
 بعد از اجرای هر Flow، گزارش مرحله‌ای چاپ می‌شود. اگر یک مرحله شکست بخورد، همان مرحله با وضعیت `FAILED`
 ثبت می‌شود و تمام مراحل بعدی با وضعیت `NOT_EXECUTED` گزارش می‌شوند.
+برای هر مرحله، بخش `payloadSent` درخواست واقعی و بخش `responseReceived` پاسخ واقعی را نشان می‌دهد.
+در صورت خطا، نوع خطا، متن خطا، payload ارسالی و پاسخ دریافتی همان مرحله ثبت می‌شود.
 
 ## وضعیت فازهای بعدی
 
