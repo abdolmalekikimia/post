@@ -32,10 +32,12 @@ def test_signalr_handshake_and_invocation():
 
     with patch("clients.signalr_client.create_connection", return_value=fake_socket):
         client = DeviceWebSocketClient("ws://localhost:5025")
-        client.connect()
+        connection_details = client.connect()
         result = client.invoke("Auth", [{"messageType": "auth"}], "a1")
         client.close()
 
+    assert connection_details["protocol"] == {"protocol": "json", "version": 1}
+    assert connection_details["handshakeResponse"] == [{}]
     assert result == {"status": 0, "sessionId": "session-1"}
     assert fake_socket.sent == [
         '{"protocol":"json","version":1}\x1e',

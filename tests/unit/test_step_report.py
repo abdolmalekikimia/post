@@ -4,6 +4,7 @@ from utils.step_report import (
     ExecutionReport,
     FlowExecutionError,
     StepStatus,
+    format_detail,
     run_step,
 )
 
@@ -44,3 +45,28 @@ def test_failed_step_stops_and_marks_following_steps():
         StepStatus.NOT_EXECUTED,
     ]
     assert "service unavailable" in report.render()
+
+
+def test_report_contains_exact_detail_and_redacts_credentials():
+    report = ExecutionReport("detail flow")
+    report.register("Auth")
+
+    run_step(
+        report,
+        "Auth",
+        lambda: {
+            "status": 0,
+            "sessionId": "session-1",
+            "deviceToken": "secret-token",
+        },
+        success_message="احراز هویت دستگاه موفق شد.",
+    )
+
+    rendered = report.render()
+    assert "احراز هویت دستگاه موفق شد." in rendered
+    assert '"status": 0' in rendered
+    assert '"sessionId": "session-1"' in rendered
+    assert "secret-token" not in rendered
+    assert format_detail({"nested": {"password": "secret"}}) == (
+        '{"nested": {"password": "<redacted>"}}'
+    )

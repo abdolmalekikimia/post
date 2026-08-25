@@ -22,10 +22,15 @@ class DeviceWebSocketClient:
         self.timeout = timeout
         self._socket: WebSocket | None = None
 
-    def connect(self) -> None:
+    def connect(self) -> dict[str, Any]:
         self._socket = create_connection(self.ws_url, timeout=self.timeout)
         self._send_frame(self.JSON_PROTOCOL)
-        self._receive_handshake()
+        handshake_frames = self._receive_handshake()
+        return {
+            "webSocketUrl": self.ws_url,
+            "protocol": self.JSON_PROTOCOL,
+            "handshakeResponse": handshake_frames,
+        }
 
     def close(self) -> None:
         if self._socket is not None:
@@ -100,7 +105,7 @@ class DeviceWebSocketClient:
 
         return self._decode_frames(raw_response)
 
-    def _receive_handshake(self) -> None:
+    def _receive_handshake(self) -> list[dict[str, Any]]:
         frames = self._receive_frames()
         for frame in frames:
             if frame.get("error"):
@@ -111,6 +116,7 @@ class DeviceWebSocketClient:
             raise RuntimeError(
                 f"Unexpected SignalR handshake response: {frames}"
             )
+        return frames
 
     def invoke(
         self,

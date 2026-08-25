@@ -27,37 +27,44 @@ class HappyPathResult:
 def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
     report = ExecutionReport("EPS-49 happy path")
     report.register(
-        "Admin Login",
-        "Update Device IP",
-        "SignalR Connect/Handshake",
-        "Device Auth",
-        "Register Inbound",
+        "1. Admin Login - POST /admin/login",
+        "2. Update Device IP - PUT /admin/devices/{deviceId}/ip",
+        "3. SignalR Connect/Handshake - WebSocket /ws/device",
+        "4. Device Authentication - Auth",
+        "5. Inbound Registration - RegisterInbound",
     )
     admin = AdminService(RestClient(run_settings.base_url, run_settings.timeout_seconds))
     admin_token = run_step(
         report,
-        "Admin Login",
+        "1. Admin Login - POST /admin/login",
         lambda: admin.login(
             run_settings.admin_username,
             run_settings.admin_password,
         ),
+        detail="ورود ادمین موفق شد؛ توکن دریافت شد و برای امنیت در گزارش نمایش داده نمی‌شود.",
     )
     wait_between_api_calls(run_settings.api_delay_seconds)
 
     run_step(
         report,
-        "Update Device IP",
+        "2. Update Device IP - PUT /admin/devices/{deviceId}/ip",
         lambda: admin.update_device_ip(
             run_settings.device_id,
             run_settings.device_ip,
             admin_token,
         ),
+        success_message="ثبت IP دستگاه موفق شد.",
     )
     wait_between_api_calls(run_settings.api_delay_seconds)
 
     ws = DeviceWebSocketClient(run_settings.ws_url, run_settings.timeout_seconds)
     try:
-        run_step(report, "SignalR Connect/Handshake", ws.connect)
+        run_step(
+            report,
+            "3. SignalR Connect/Handshake - WebSocket /ws/device",
+            ws.connect,
+            success_message="اتصال WebSocket و SignalR handshake موفق شد.",
+        )
         device = DeviceService(ws)
         wait_between_api_calls(run_settings.api_delay_seconds)
 
@@ -73,7 +80,12 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
                 )
             return response
 
-        auth_response = run_step(report, "Device Auth", authenticate)
+        auth_response = run_step(
+            report,
+            "4. Device Authentication - Auth",
+            authenticate,
+            success_message="احراز هویت دستگاه موفق شد.",
+        )
         wait_between_api_calls(run_settings.api_delay_seconds)
 
         def register_inbound() -> dict[str, Any]:
@@ -86,8 +98,9 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
 
         register_response = run_step(
             report,
-            "Register Inbound",
+            "5. Inbound Registration - RegisterInbound",
             register_inbound,
+            success_message="ثبت وارده موفق شد.",
         )
     finally:
         ws.close()

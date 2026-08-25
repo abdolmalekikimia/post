@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 import time
-from typing import Callable, Generic, TypeVar
+import json
+from typing import Callable, TypeVar
 
 
 class StepStatus(str, Enum):
@@ -19,6 +20,7 @@ class StepRecord:
     status: StepStatus = StepStatus.PENDING
     duration_seconds: float = 0.0
     message: str = ""
+    detail: str = ""
 
 
 @dataclass
@@ -40,28 +42,35 @@ class ExecutionReport:
         step_name: str,
         duration_seconds: float,
         message: str = "",
+        detail: str = "",
     ) -> None:
         record = self._record(step_name)
         record.status = StepStatus.PASSED
         record.duration_seconds = duration_seconds
         record.message = message
+        record.detail = detail
 
     def failed(
         self,
         step_name: str,
         duration_seconds: float,
         message: str,
+        detail: str = "",
     ) -> None:
         record = self._record(step_name)
         record.status = StepStatus.FAILED
         record.duration_seconds = duration_seconds
         record.message = message
+        record.detail = detail
 
     def mark_remaining_not_executed(self) -> None:
         for record in self.records:
             if record.status == StepStatus.PENDING:
                 record.status = StepStatus.NOT_EXECUTED
                 record.message = "Stopped because a previous step failed"
+                record.detail = (
+                    "این مرحله اجرا نشد چون مرحله قبلی با خطا متوقف شد."
+                )
 
     def summary(self) -> dict[str, int]:
         return {
@@ -81,6 +90,8 @@ class ExecutionReport:
                 f"{index:02d}. [{record.status.value}] "
                 f"{record.name} ({duration}){suffix}"
             )
+            if record.detail:
+                lines.append(f"    Detail: {record.detail}")
 
         summary = self.summary()
         lines.append(
@@ -114,12 +125,50 @@ class FlowExecutionError(AssertionError):
 
 
 T = TypeVar("T")
+Detail = str | Callable[[T], str]
+
+
+def format_detail(value: object) -> str:
+    """Format a response without leaking credentials into the report."""
+    def sanitize(item: object) -> object:
+        if isinstance(item, dict):
+            sanitized = {}
+            for key, nested_item in item.items():
+                lowered_key = str(key).lower()
+                if any(
+                    secret_name in lowered_key
+                    for secret_name in (
+                        "password",
+                        "token",
+                        "authorization",
+                        "secret",
+                    )
+                ):
+                    sanitized[key] = "<redacted>"
+                else:
+                    sanitized[key] = sanitize(nested_item)
+            return sanitized
+        if isinstance(item, list):
+            return [sanitize(nested_item) for nested_item in item]
+        if isinstance(item, tuple):
+            return [sanitize(nested_item) for nested_item in item]
+        return item
+
+    if not isinstance(value, str):
+        value = sanitize(value)
+
+    try:
+        return json.dumps(value, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        return repr(value)
 
 
 def run_step(
     report: ExecutionReport,
     step_name: str,
     action: Callable[[], T],
+    detail: Detail | None = None,
+    success_message: str = "",
 ) -> T:
     started_at = time.monotonic()
     try:
@@ -129,6 +178,9 @@ def run_step(
             step_name,
             time.monotonic() - started_at,
             f"{type(exc).__name__}: {exc}",
+            detail=(
+                f"خطای دقیق مرحله: {type(exc).__name__}: {exc}"
+            ),
         )
         report.mark_remaining_not_executed()
         report.print()
@@ -139,5 +191,17 @@ def run_step(
             report,
         ) from exc
 
-    report.passed(step_name, time.monotonic() - started_at)
+    if detail is None:
+        detail_text = ""
+    elif callable(detail):
+        detail_text = detail(result)
+    else:
+        detail_text = detail
+
+    report.passed(
+        step_name,
+        time.monotonic() - started_at,
+        message=success_message,
+        detail=format_detail(detail_text or result),
+    )
     return result
