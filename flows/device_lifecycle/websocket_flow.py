@@ -10,6 +10,10 @@ from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
 from services.admin_service import AdminService
 from services.device_service import DeviceService
+from flows.device_lifecycle.positive_scenarios import (
+    register_positive_step_names,
+    run_positive_scenarios,
+)
 from utils.step_report import ExecutionReport, exchange_detail, run_step
 
 
@@ -19,6 +23,7 @@ class WebSocketFlowResult:
     connection_response: dict[str, Any]
     auth_response: dict[str, Any]
     register_response: dict[str, Any]
+    scenario_responses: dict[str, dict[str, dict[str, Any]]]
     report: ExecutionReport
 
 
@@ -33,12 +38,12 @@ def run_websocket_flow(
     """Run a focused WebSocket/SignalR transport and device-message flow."""
     report = ExecutionReport("WebSocket device flow")
     report.register(
-        "1. Admin Login - POST /admin/login",
-        "2. Update Device IP - PUT /admin/devices/{deviceId}/ip",
-        "3. WebSocket Connect/Handshake - /ws/device",
-        "4. WebSocket Auth Invocation - Auth",
-        "5. WebSocket Inbound Invocation - RegisterInbound",
+        "1. [BASE] Admin Login - POST /admin/login",
+        "2. [BASE] Update Device IP - PUT /admin/devices/{deviceId}/ip",
+        "3. [BASE] WebSocket Connect/Handshake - /ws/device",
+        "4. [BASE] WebSocket Auth Invocation - Auth",
     )
+    register_positive_step_names(report, start_step=5)
 
     rest_client = RestClient(
         run_settings.base_url,
@@ -48,7 +53,7 @@ def run_websocket_flow(
 
     admin_token = run_step(
         report,
-        "1. Admin Login - POST /admin/login",
+        "1. [BASE] Admin Login - POST /admin/login",
         lambda: admin.login(
             run_settings.admin_username,
             run_settings.admin_password,
@@ -61,7 +66,7 @@ def run_websocket_flow(
 
     run_step(
         report,
-        "2. Update Device IP - PUT /admin/devices/{deviceId}/ip",
+        "2. [BASE] Update Device IP - PUT /admin/devices/{deviceId}/ip",
         lambda: admin.update_device_ip(
             run_settings.device_id,
             run_settings.device_ip,
@@ -80,7 +85,7 @@ def run_websocket_flow(
     try:
         connection_response = run_step(
             report,
-            "3. WebSocket Connect/Handshake - /ws/device",
+            "3. [BASE] WebSocket Connect/Handshake - /ws/device",
             ws.connect,
             success_message="WebSocket متصل شد و handshake موفق شد.",
             detail=lambda _: exchange_detail(ws.last_exchange),
@@ -105,7 +110,7 @@ def run_websocket_flow(
 
         auth_response = run_step(
             report,
-            "4. WebSocket Auth Invocation - Auth",
+            "4. [BASE] WebSocket Auth Invocation - Auth",
             authenticate,
             success_message="پیام Auth از طریق WebSocket موفق شد.",
             detail=lambda _: exchange_detail(ws.last_exchange),
@@ -116,27 +121,13 @@ def run_websocket_flow(
         )
         wait_between_api_calls(run_settings.api_delay_seconds)
 
-        def register_inbound() -> dict[str, Any]:
-            response = device.register_inbound(
-                run_settings.barcode,
-                run_settings.inbound_timeout_ms,
-            )
-            assert_success_response(response, "RegisterInbound")
-            return response
-
-        register_response = run_step(
-            report,
-            "5. WebSocket Inbound Invocation - RegisterInbound",
-            register_inbound,
-            success_message=(
-                "پیام RegisterInbound از طریق WebSocket موفق شد."
-            ),
-            detail=lambda _: exchange_detail(ws.last_exchange),
-            error_detail=lambda error: {
-                "error": f"{type(error).__name__}: {error}",
-                **exchange_detail(ws.last_exchange),
-            },
+        scenario_responses = run_positive_scenarios(
+            report=report,
+            ws=ws,
+            run_settings=run_settings,
+            start_step=5,
         )
+        register_response = scenario_responses["EPS-49"]["base_register"]
     finally:
         ws.close()
 
@@ -146,6 +137,7 @@ def run_websocket_flow(
         connection_response=connection_response,
         auth_response=auth_response,
         register_response=register_response,
+        scenario_responses=scenario_responses,
         report=report,
     )
 

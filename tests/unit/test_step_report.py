@@ -64,10 +64,12 @@ def test_report_contains_exact_detail_and_redacts_credentials():
     )
 
     rendered = report.render()
-    assert "احراز هویت دستگاه موفق شد." in rendered
     assert '"status": 0' in rendered
     assert '"sessionId": "session-1"' in rendered
     assert "secret-token" not in rendered
+    assert "payloadSent:" not in rendered
+    assert "responseReceived:" in rendered
+    assert "expected: PASS" in rendered
     assert format_detail({"nested": {"password": "secret"}}) == (
         '{"nested": {"password": "<redacted>"}}'
     )
@@ -92,3 +94,25 @@ def test_exchange_detail_contains_sent_payload_and_received_response():
             "errorMessage": "invalid device credentials",
         },
     }
+
+
+def test_report_has_only_payload_response_and_expectation_sections():
+    report = ExecutionReport("compact flow")
+    report.register("RegisterInbound")
+
+    run_step(
+        report,
+        "RegisterInbound",
+        lambda: {"status": 0},
+        detail=lambda _: {
+            "payloadSent": {"target": "RegisterInbound"},
+            "responseReceived": {"status": 0},
+        },
+    )
+
+    rendered = report.render()
+    assert "payloadSent: {\"target\": \"RegisterInbound\"}" in rendered
+    assert "responseReceived: {\"status\": 0}" in rendered
+    assert "expected: PASS" in rendered
+    assert "duration" not in rendered
+    assert "Detail:" not in rendered

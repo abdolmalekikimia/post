@@ -23,6 +23,8 @@ class CoreHistoryCase:
     expected_status: int
     expected_fields: dict[str, Any]
     physical_attributes: dict[str, Any] | None = None
+    expected_error_contains: str | None = None
+    expect_discrepancy: bool = False
 
 
 CORE_HISTORY_CASES = (
@@ -216,9 +218,12 @@ def run_core_history_flow(
                     expected_status=case.expected_status,
                     operation=case.name,
                     expected_fields=case.expected_fields,
+                    expected_error_contains=case.expected_error_contains,
                 )
 
-                if case.name == "success_with_discrepancy":
+                if case.expect_discrepancy or (
+                    case.name == "success_with_discrepancy"
+                ):
                     discrepancy = response_payload(response).get("discrepancy")
                     if not isinstance(discrepancy, dict):
                         raise AssertionError(

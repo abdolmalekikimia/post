@@ -12,27 +12,22 @@
 بازرسی SQLite بررسی شود و assertion تست WebSocket عمداً فقط پاسخ بلادرنگ را
 بررسی می‌کند.
 
-## مسیر موفق فعلی
+## محل اجرای مسیر موفق
 
-فلو این مراحل وابسته را اجرا می‌کند:
+سناریوهای مثبت EPS-64 دیگر تست مستقل ندارند و در هر دو Flow مثبت اجرا می‌شوند:
 
-1. ورود ادمین
-2. ثبت IP دستگاه
-3. اتصال WebSocket و SignalR handshake
-4. احراز هویت دستگاه
-5. `RegisterInbound` با یک تصویر
-6. `RegisterInbound` با `supplementaryData`
-7. `RegisterInbound` با تصویر `img-003` برای بررسی بعدی پاک‌سازی محلی
+1. مسیر موفق پایه: `tests/device_lifecycle/test_auth_success.py`
+2. Flow مستقل: `tests/device_lifecycle/test_websocket_flow.py`
 
 در صورت شکست هر مرحله، مراحل بعدی اجرا نمی‌شوند و برای هر مرحله payload
 ارسالی و response دریافتی در گزارش چاپ می‌شود.
 
-## اجرا
+## اجرا همراه با مسیرهای مثبت
 
 ```powershell
 $env:RUN_E2E="1"
-$env:RUN_EPS64="1"
-.venv\Scripts\python.exe -m pytest tests/lazy_upload/test_eps64_success.py -q -s
+.venv\Scripts\python.exe -m pytest tests/device_lifecycle/test_auth_success.py -q -s
+.venv\Scripts\python.exe -m pytest tests/device_lifecycle/test_websocket_flow.py -q -s
 ```
 
 مقدارهای قابل تنظیم در `config/test.env`:

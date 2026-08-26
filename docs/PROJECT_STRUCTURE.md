@@ -16,7 +16,8 @@ The physical directory remains `post` so existing PyCharm configurations and loc
 | Inbound registration | `flows/inbound/`, `tests/inbound/` | Developed |
 | Core history and merge behavior | `flows/inbound/core_history_flow.py` | Developed |
 | Postal, destination lookup and orchestration | `flows/inbound/eps55_flow.py` | Developed for EPS-55 mocks |
-| Lazy asynchronous image/supplementary upload staging | `flows/lazy_upload/`, `tests/lazy_upload/` | EPS-64 happy path developed; worker verification is external |
+| Positive EPS-53/EPS-55/EPS-64 execution | `flows/device_lifecycle/positive_scenarios.py`, `flows/inbound/eps64_cases.py` | Included in base and WebSocket flows |
+| Lazy asynchronous worker verification | `docs/EPS64.md` | External via logs/SQLite; no direct diagnostic endpoint |
 | Operational destination and shooter | `flows/destination/` | Reserved |
 | Outbound registration and bag closing | `flows/bag/` | Reserved |
 | Dispatch closing | `flows/dispatch/` | Reserved |

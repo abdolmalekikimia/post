@@ -20,7 +20,11 @@ class StepRecord:
     status: StepStatus = StepStatus.PENDING
     duration_seconds: float = 0.0
     message: str = ""
-    detail: str = ""
+    detail: object = ""
+    payload_sent: object = None
+    response_received: object = None
+    expectation: str = "NOT_CHECKED"
+    error: str = ""
 
 
 @dataclass
@@ -42,35 +46,63 @@ class ExecutionReport:
         step_name: str,
         duration_seconds: float,
         message: str = "",
-        detail: str = "",
+        detail: object = "",
     ) -> None:
         record = self._record(step_name)
         record.status = StepStatus.PASSED
         record.duration_seconds = duration_seconds
         record.message = message
         record.detail = detail
+        self._capture_exchange(record, detail)
+        record.expectation = "PASS"
 
     def failed(
         self,
         step_name: str,
         duration_seconds: float,
         message: str,
-        detail: str = "",
+        detail: object = "",
     ) -> None:
         record = self._record(step_name)
         record.status = StepStatus.FAILED
         record.duration_seconds = duration_seconds
         record.message = message
         record.detail = detail
+        self._capture_exchange(record, detail)
+        record.expectation = "FAIL"
+        record.error = message
+
+    @staticmethod
+    def _capture_exchange(record: StepRecord, detail: object) -> None:
+        if not isinstance(detail, dict):
+            if detail not in ("", None):
+                record.response_received = detail
+            return
+
+        exchange = detail
+        nested_exchange = detail.get("lastExchange")
+        if isinstance(nested_exchange, dict):
+            exchange = {**nested_exchange, **detail}
+
+        record.payload_sent = exchange.get("payloadSent")
+        record.response_received = exchange.get("responseReceived")
+        if (
+            record.payload_sent is None
+            and record.response_received is None
+            and "error" not in detail
+        ):
+            record.response_received = detail
+        error = detail.get("error")
+        if error:
+            record.error = str(error)
 
     def mark_remaining_not_executed(self) -> None:
         for record in self.records:
             if record.status == StepStatus.PENDING:
                 record.status = StepStatus.NOT_EXECUTED
                 record.message = "Stopped because a previous step failed"
-                record.detail = (
-                    "این مرحله اجرا نشد چون مرحله قبلی با خطا متوقف شد."
-                )
+                record.expectation = "NOT_CHECKED"
+                record.detail = ""
 
     def summary(self) -> dict[str, int]:
         return {
@@ -84,21 +116,34 @@ class ExecutionReport:
     def render(self) -> str:
         lines = [f"Execution report: {self.flow_name}"]
         for index, record in enumerate(self.records, start=1):
-            duration = f"{record.duration_seconds:.2f}s"
-            suffix = f" - {record.message}" if record.message else ""
+            display_status = {
+                StepStatus.PASSED: "PASS",
+                StepStatus.FAILED: "FAIL",
+                StepStatus.NOT_EXECUTED: "NOT_CHECKED",
+                StepStatus.PENDING: "NOT_CHECKED",
+            }[record.status]
             lines.append(
-                f"{index:02d}. [{record.status.value}] "
-                f"{record.name} ({duration}){suffix}"
+                f"{index:02d}. [{display_status}] {record.name}"
             )
-            if record.detail:
-                lines.append(f"    Detail: {record.detail}")
+            if record.payload_sent is not None:
+                lines.append(
+                    f"    payloadSent: {format_detail(record.payload_sent)}"
+                )
+            if record.response_received is not None:
+                lines.append(
+                    "    responseReceived: "
+                    f"{format_detail(record.response_received)}"
+                )
+            if record.error:
+                lines.append(f"    error: {record.error}")
+            lines.append(f"    expected: {record.expectation}")
 
         summary = self.summary()
         lines.append(
-            "Summary: "
-            f"passed={summary.get('PASSED', 0)}, "
-            f"failed={summary.get('FAILED', 0)}, "
-            f"not_executed={summary.get('NOT_EXECUTED', 0)}"
+            "Result: "
+            f"PASS={summary.get('PASSED', 0)}, "
+            f"FAIL={summary.get('FAILED', 0)}, "
+            f"NOT_CHECKED={summary.get('NOT_EXECUTED', 0)}"
         )
         return "\n".join(lines)
 
@@ -120,12 +165,12 @@ class FlowExecutionError(AssertionError):
         self.report = report
         super().__init__(
             f"{flow_name} stopped at '{failed_step}': "
-            f"{type(cause).__name__}: {cause}\n\n{report.render()}"
+            f"{type(cause).__name__}: {cause}"
         )
 
 
 T = TypeVar("T")
-Detail = str | Callable[[T], str]
+Detail = object | Callable[[T], object]
 ErrorDetail = Callable[[Exception], object]
 
 
@@ -187,13 +232,13 @@ def run_step(
         detail_value: object = (
             error_detail(exc)
             if error_detail is not None
-            else f"خطای دقیق مرحله: {type(exc).__name__}: {exc}"
+            else {"error": f"{type(exc).__name__}: {exc}"}
         )
         report.failed(
             step_name,
             time.monotonic() - started_at,
             f"{type(exc).__name__}: {exc}",
-            detail=format_detail(detail_value),
+            detail=detail_value,
         )
         report.mark_remaining_not_executed()
         report.print()
@@ -205,16 +250,16 @@ def run_step(
         ) from exc
 
     if detail is None:
-        detail_text = ""
+        detail_value: object = result
     elif callable(detail):
-        detail_text = detail(result)
+        detail_value = detail(result)
     else:
-        detail_text = detail
+        detail_value = detail
 
     report.passed(
         step_name,
         time.monotonic() - started_at,
         message=success_message,
-        detail=format_detail(detail_text or result),
+        detail=detail_value,
     )
     return result

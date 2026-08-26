@@ -35,6 +35,15 @@ class Settings:
         "EPS64_IMAGE_DESCRIPTION",
         "front",
     )
+    stress_iterations: int = int(os.getenv("STRESS_ITERATIONS", "50"))
+    stress_workers: int = max(1, int(os.getenv("STRESS_WORKERS", "1")))
+    stress_delay_seconds: float = float(
+        os.getenv("STRESS_DELAY_SECONDS", "5")
+    )
+    stress_fail_fast: bool = os.getenv(
+        "STRESS_FAIL_FAST",
+        "true",
+    ).lower() in {"1", "true", "yes", "on"}
 
 
 settings = Settings()
