@@ -48,7 +48,8 @@ def test_failed_step_stops_and_marks_following_steps():
     assert "service unavailable" in report.render()
 
 
-def test_report_contains_exact_detail_and_redacts_credentials():
+def test_report_contains_exact_detail_and_redacts_credentials(monkeypatch):
+    monkeypatch.delenv("REPORT_SHOW_SECRETS", raising=False)
     report = ExecutionReport("detail flow")
     report.register("Auth")
 
@@ -72,6 +73,11 @@ def test_report_contains_exact_detail_and_redacts_credentials():
     assert "expected: PASS" in rendered
     assert format_detail({"nested": {"password": "secret"}}) == (
         '{"nested": {"password": "<redacted>"}}'
+    )
+
+    monkeypatch.setenv("REPORT_SHOW_SECRETS", "true")
+    assert format_detail({"nested": {"password": "secret"}}) == (
+        '{"nested": {"password": "secret"}}'
     )
 
 

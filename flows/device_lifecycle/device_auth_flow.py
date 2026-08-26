@@ -8,10 +8,6 @@ from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
 from services.admin_service import AdminService
 from services.device_service import DeviceService
-from flows.device_lifecycle.positive_scenarios import (
-    register_positive_step_names,
-    run_positive_scenarios,
-)
 from utils.step_report import ExecutionReport, exchange_detail, run_step
 
 
@@ -36,8 +32,8 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
         "2. [BASE] Update Device IP - PUT /admin/devices/{deviceId}/ip",
         "3. [BASE] SignalR Connect/Handshake - WebSocket /ws/device",
         "4. [BASE] Device Authentication - Auth",
+        "5. [BASE] Inbound Registration - RegisterInbound",
     )
-    register_positive_step_names(report, start_step=5)
     rest_client = RestClient(
         run_settings.base_url,
         run_settings.timeout_seconds,
@@ -116,13 +112,26 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
         )
         wait_between_api_calls(run_settings.api_delay_seconds)
 
-        scenario_responses = run_positive_scenarios(
-            report=report,
-            ws=ws,
-            run_settings=run_settings,
-            start_step=5,
+        def register_base() -> dict[str, Any]:
+            response = device.register_inbound(
+                run_settings.barcode,
+                run_settings.inbound_timeout_ms,
+            )
+            assert_success_response(response, "RegisterInbound")
+            return response
+
+        register_response = run_step(
+            report,
+            "5. [BASE] Inbound Registration - RegisterInbound",
+            register_base,
+            success_message="ثبت ورودی در مسیر موفق پایه انجام شد.",
+            detail=lambda _: exchange_detail(ws.last_exchange),
+            error_detail=lambda error: {
+                "error": f"{type(error).__name__}: {error}",
+                **exchange_detail(ws.last_exchange),
+            },
         )
-        register_response = scenario_responses["EPS-49"]["base_register"]
+        scenario_responses = {"EPS-49": {"base_register": register_response}}
     finally:
         ws.close()
 

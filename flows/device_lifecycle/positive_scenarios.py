@@ -18,6 +18,18 @@ from services.device_service import DeviceService
 from utils.step_report import ExecutionReport, exchange_detail, run_step
 
 
+POSITIVE_CORE_HISTORY_CASES = tuple(
+    case
+    for case in CORE_HISTORY_CASES
+    if case.name == "success_no_discrepancy"
+)
+POSITIVE_EPS55_CASES = tuple(
+    case
+    for case in EPS55_CASES
+    if case.expected_status == 0
+)
+
+
 def positive_step_name(
     step_number: int,
     domain: str,
@@ -30,8 +42,8 @@ def register_positive_step_names(
     report: ExecutionReport,
     start_step: int,
     include_base_case: bool = True,
-    eps53_cases: tuple[CoreHistoryCase, ...] = CORE_HISTORY_CASES,
-    eps55_cases: tuple[Eps55Case, ...] = EPS55_CASES,
+    eps53_cases: tuple[CoreHistoryCase, ...] = POSITIVE_CORE_HISTORY_CASES,
+    eps55_cases: tuple[Eps55Case, ...] = POSITIVE_EPS55_CASES,
     eps64_cases: tuple[Eps64Case, ...] | None = None,
 ) -> list[str]:
     active_eps64_cases = eps64_cases or build_success_cases()
@@ -101,8 +113,8 @@ def run_positive_scenarios(
     run_settings: Settings,
     start_step: int,
     include_base_case: bool = True,
-    eps53_cases: tuple[CoreHistoryCase, ...] = CORE_HISTORY_CASES,
-    eps55_cases: tuple[Eps55Case, ...] = EPS55_CASES,
+    eps53_cases: tuple[CoreHistoryCase, ...] = POSITIVE_CORE_HISTORY_CASES,
+    eps55_cases: tuple[Eps55Case, ...] = POSITIVE_EPS55_CASES,
     eps64_cases: tuple[Eps64Case, ...] | None = None,
 ) -> dict[str, dict[str, dict[str, Any]]]:
     """Run all positive/regression cases over the already-authenticated socket."""

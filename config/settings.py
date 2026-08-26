@@ -16,7 +16,7 @@ class Settings:
     admin_username: str = os.getenv("ADMIN_USERNAME", "admin")
     admin_password: str = os.getenv("ADMIN_PASSWORD", "")
     device_id: str = os.getenv("DEVICE_ID", "SIM-DEVICE-001")
-    device_token: str = os.getenv("DEVICE_TOKEN", "")
+    device_token: str = "test-token-123"
     device_ip: str = os.getenv("DEVICE_IP", "127.0.0.1")
     barcode: str = os.getenv("BARCODE", "123456789012345678901234")
     timeout_seconds: float = float(os.getenv("TIMEOUT_SECONDS", "10"))

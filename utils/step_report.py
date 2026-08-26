@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+import os
 import time
 import json
 from typing import Callable, TypeVar
@@ -183,13 +184,20 @@ def exchange_detail(exchange: dict[str, object]) -> dict[str, object]:
 
 
 def format_detail(value: object) -> str:
-    """Format a response without leaking credentials into the report."""
+    """Format a response, optionally showing exact credential values."""
+    show_secrets = os.getenv("REPORT_SHOW_SECRETS", "").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
     def sanitize(item: object) -> object:
         if isinstance(item, dict):
             sanitized = {}
             for key, nested_item in item.items():
                 lowered_key = str(key).lower()
-                if any(
+                if not show_secrets and any(
                     secret_name in lowered_key
                     for secret_name in (
                         "password",
@@ -208,7 +216,7 @@ def format_detail(value: object) -> str:
             return [sanitize(nested_item) for nested_item in item]
         return item
 
-    if not isinstance(value, str):
+    if not show_secrets and not isinstance(value, str):
         value = sanitize(value)
 
     try:
