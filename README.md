@@ -15,6 +15,7 @@
 - اعتبارسنجی بارکدهای ۱۴، ۲۴ و ۳۷ رقمی
 - سناریوهای EPS-53 مربوط به تاریخچه Core
 - سناریوهای EPS-55 مربوط به Postal، Destination و Merge
+- سناریوی EPS-64 برای Stage کردن ارسال غیرهمزمان تصاویر و اطلاعات تکمیلی
 - Flow مستقل تست WebSocket/SignalR دستگاه
 - اجرای وابسته؛ در صورت دریافت نتیجه غیرمنتظره، سناریوی بعدی اجرا نمی‌شود
 - گزارش مرحله‌ای شامل وضعیت موفق، ناموفق و اجرا‌نشده
@@ -89,6 +90,16 @@ $env:RUN_EPS55="1"
 .venv\Scripts\python.exe -m pytest tests/inbound/test_eps55.py -q -s
 ```
 
+سناریوی موفق EPS-64:
+
+```powershell
+$env:RUN_E2E="1"
+$env:RUN_EPS64="1"
+.venv\Scripts\python.exe -m pytest tests/lazy_upload/test_eps64_success.py -q -s
+```
+
+راهنمای جزئی EPS-64 در [docs/EPS64.md](docs/EPS64.md) قرار دارد.
+
 Flow مستقل WebSocket/SignalR:
 
 ```powershell
@@ -102,6 +113,13 @@ $env:RUN_E2E="1"
 ثبت می‌شود و تمام مراحل بعدی با وضعیت `NOT_EXECUTED` گزارش می‌شوند.
 برای هر مرحله، بخش `payloadSent` درخواست واقعی و بخش `responseReceived` پاسخ واقعی را نشان می‌دهد.
 در صورت خطا، نوع خطا، متن خطا، payload ارسالی و پاسخ دریافتی همان مرحله ثبت می‌شود.
+
+در EPS-64، پاسخ موفق WebSocket فقط شروع Stage شدن آیتم در صف محلی است و باید
+`status=0` باشد. تأیید نهایی توسط `LazyUploadWorker` انجام می‌شود؛ طبق نیازمندی
+فعلی endpoint مشاهده صف وجود ندارد و بررسی حذف آیتم پس از موفقیت باید از طریق
+لاگ سرویس یا SQLite انجام شود. ساختار `Eps64Case` برای افزودن سناریوهای
+Rejected، Timeout، Unavailable، retry و dead-letter بدون تغییر در orchestration
+آماده است.
 
 ## وضعیت فازهای بعدی
 

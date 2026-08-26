@@ -35,11 +35,17 @@ class DeviceService:
         barcode: str,
         timeout_ms: int = 5000,
         physical_attributes: dict[str, Any] | None = None,
+        supplementary_data: dict[str, Any] | None = None,
+        images: list[dict[str, Any]] | None = None,
+        use_default_physical_attributes: bool = True,
     ) -> dict[str, Any]:
         return self.register_inbound_barcodes(
             barcodes=[barcode],
             timeout_ms=timeout_ms,
             physical_attributes=physical_attributes,
+            supplementary_data=supplementary_data,
+            images=images,
+            use_default_physical_attributes=use_default_physical_attributes,
         )
 
     def register_inbound_barcodes(
@@ -47,11 +53,14 @@ class DeviceService:
         barcodes: list[str],
         timeout_ms: int = 5000,
         physical_attributes: dict[str, Any] | None = None,
+        supplementary_data: dict[str, Any] | None = None,
+        images: list[dict[str, Any]] | None = None,
+        use_default_physical_attributes: bool = True,
     ) -> dict[str, Any]:
         if not barcodes:
             raise ValueError("At least one barcode is required")
 
-        if physical_attributes is None:
+        if physical_attributes is None and use_default_physical_attributes:
             physical_attributes = {
                 "weightGrams": 1500,
                 "dimensions": {
@@ -70,8 +79,8 @@ class DeviceService:
                 .replace("+00:00", "Z"),
                 "physicalAttributes": physical_attributes,
                 "parcelType": None,
-                "supplementaryData": None,
-                "images": None,
+                "supplementaryData": supplementary_data,
+                "images": images,
                 "timeoutMs": timeout_ms,
             },
         )

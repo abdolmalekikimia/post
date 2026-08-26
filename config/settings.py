@@ -22,6 +22,19 @@ class Settings:
     timeout_seconds: float = float(os.getenv("TIMEOUT_SECONDS", "10"))
     inbound_timeout_ms: int = int(os.getenv("INBOUND_TIMEOUT_MS", "5000"))
     api_delay_seconds: float = float(os.getenv("API_DELAY_SECONDS", "5"))
+    eps64_image_barcode: str = os.getenv(
+        "EPS64_IMAGE_BARCODE",
+        "300000000000000000000001",
+    )
+    eps64_supplementary_barcode: str = os.getenv(
+        "EPS64_SUPPLEMENTARY_BARCODE",
+        "300000000000000000000002",
+    )
+    eps64_image_id: str = os.getenv("EPS64_IMAGE_ID", "img-001")
+    eps64_image_description: str = os.getenv(
+        "EPS64_IMAGE_DESCRIPTION",
+        "front",
+    )
 
 
 settings = Settings()
