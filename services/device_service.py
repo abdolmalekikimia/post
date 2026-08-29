@@ -38,6 +38,8 @@ class DeviceService:
         supplementary_data: dict[str, Any] | None = None,
         images: list[dict[str, Any]] | None = None,
         use_default_physical_attributes: bool = True,
+        parcel_type: str | None = None,
+        read_timestamp: str | None = None,
     ) -> dict[str, Any]:
         return self.register_inbound_barcodes(
             barcodes=[barcode],
@@ -46,6 +48,8 @@ class DeviceService:
             supplementary_data=supplementary_data,
             images=images,
             use_default_physical_attributes=use_default_physical_attributes,
+            parcel_type=parcel_type,
+            read_timestamp=read_timestamp,
         )
 
     def register_inbound_barcodes(
@@ -56,6 +60,8 @@ class DeviceService:
         supplementary_data: dict[str, Any] | None = None,
         images: list[dict[str, Any]] | None = None,
         use_default_physical_attributes: bool = True,
+        parcel_type: str | None = None,
+        read_timestamp: str | None = None,
     ) -> dict[str, Any]:
         if not barcodes:
             raise ValueError("At least one barcode is required")
@@ -74,11 +80,10 @@ class DeviceService:
             "inbound.register",
             {
                 "barcodes": barcodes,
-                "readTimestamp": datetime.now(timezone.utc)
-                .isoformat()
-                .replace("+00:00", "Z"),
+                "readTimestamp": read_timestamp
+                or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "physicalAttributes": physical_attributes,
-                "parcelType": None,
+                "parcelType": parcel_type,
                 "supplementaryData": supplementary_data,
                 "images": images,
                 "timeoutMs": timeout_ms,
@@ -86,6 +91,68 @@ class DeviceService:
         )
         return self.client.invoke(
             "RegisterInbound",
+            [envelope],
+            invocation_id=envelope["correlationId"],
+        )
+
+    def assign_destination(
+        self,
+        barcode: str | None,
+        destination_center_code: str | None,
+        chute_id: str | None = None,
+    ) -> dict[str, Any]:
+        optional_values = {
+            "barcode": barcode,
+            "destinationCenterCode": destination_center_code,
+            "chuteId": chute_id,
+        }
+        envelope = self._envelope(
+            "destination.assign",
+            {
+                key: value
+                for key, value in optional_values.items()
+                if value is not None
+            },
+        )
+        return self.client.invoke(
+            "DestinationAssign",
+            [envelope],
+            invocation_id=envelope["correlationId"],
+        )
+
+    def close_bag(
+        self,
+        destination_center_code: str | None = None,
+        seal_number: str = "SEAL-TEST-001",
+        transport_type: str = "road",
+        chute_ids: list[str] | None = None,
+        count: int | None = None,
+        last_barcode: str | None = None,
+        parcel_types: list[str] | None = None,
+        service_types: list[int] | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "sealNumber": seal_number,
+            "transportType": transport_type,
+        }
+        optional_values = {
+            "destinationCenterCode": destination_center_code,
+            "chuteIds": chute_ids,
+            "count": count,
+            "lastBarcode": last_barcode,
+            "parcelTypes": parcel_types,
+            "serviceTypes": service_types,
+        }
+        payload.update(
+            {
+                key: value
+                for key, value in optional_values.items()
+                if value is not None
+            }
+        )
+        envelope = self._envelope("bag.close", payload)
+        return self.client.invoke(
+            "BagClose",
             [envelope],
             invocation_id=envelope["correlationId"],
         )

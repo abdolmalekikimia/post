@@ -8,6 +8,10 @@ from assertions.signalr_assertions import assert_success_response, response_fiel
 from clients.rest_client import RestClient
 from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
+from flows.destination.eps71_success_flow import (
+    run_eps71_success_cases,
+    success_step_names,
+)
 from services.admin_service import AdminService
 from services.device_service import DeviceService
 from utils.step_report import ExecutionReport, exchange_detail, run_step
@@ -39,6 +43,7 @@ def run_websocket_flow(
         "3. [BASE] WebSocket Connect/Handshake - /ws/device",
         "4. [BASE] WebSocket Auth Invocation - Auth",
         "5. [BASE] WebSocket RegisterInbound Invocation - RegisterInbound",
+        *success_step_names(6),
     )
 
     rest_client = RestClient(
@@ -136,7 +141,18 @@ def run_websocket_flow(
                 **exchange_detail(ws.last_exchange),
             },
         )
-        scenario_responses = {"BASE": {"register": register_response}}
+        wait_between_api_calls(run_settings.api_delay_seconds)
+        eps71_success = run_eps71_success_cases(
+            device=device,
+            run_settings=run_settings,
+            report=report,
+            wait_between_steps=wait_between_api_calls,
+            start_step=6,
+        )
+        scenario_responses = {
+            "BASE": {"register": register_response},
+            "EPS-71": eps71_success.responses,
+        }
     finally:
         ws.close()
 

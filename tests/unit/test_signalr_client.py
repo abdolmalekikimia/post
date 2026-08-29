@@ -63,3 +63,30 @@ def test_signalr_parser_accepts_multiple_frames_and_keep_alive():
         {"type": 6},
         {"type": 3, "invocationId": "r1", "result": {"status": 0}},
     ]
+
+
+def test_send_message_supports_destination_assignment_and_bag_close():
+    client = DeviceWebSocketClient("ws://localhost:5025")
+    client.invoke = lambda target, arguments, invocation_id=None: {
+        "target": target,
+        "arguments": arguments,
+        "invocationId": invocation_id,
+    }  # type: ignore[method-assign]
+
+    assignment = client.send_message(
+        {
+            "messageType": "destination.assign",
+            "correlationId": "assignment-1",
+            "payload": {},
+        }
+    )
+    bag_close = client.send_message(
+        {
+            "messageType": "bag.close",
+            "correlationId": "bag-1",
+            "payload": {},
+        }
+    )
+
+    assert assignment["target"] == "DestinationAssign"
+    assert bag_close["target"] == "BagClose"

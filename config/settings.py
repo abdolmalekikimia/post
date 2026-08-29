@@ -61,6 +61,47 @@ class Settings:
         "EPS46_ACTIVE_DEVICE_TOKEN",
         "test-token-123",
     )
+    eps76_case: str = os.getenv("EPS76_CASE", "all")
+    eps76_destination_code: str = os.getenv("EPS76_DESTINATION_CODE", "11111")
+    eps76_second_destination_code: str = os.getenv(
+        "EPS76_SECOND_DESTINATION_CODE",
+        "22222",
+    )
+    eps76_default_chute: str = os.getenv("EPS76_DEFAULT_CHUTE", "CH-04")
+    eps76_transport_type: str = os.getenv("EPS76_TRANSPORT_TYPE", "road")
+    eps76_barcode_prefix: str = os.getenv(
+        "EPS76_BARCODE_PREFIX",
+        "760000000000000000",
+    )
+    eps71_case: str = os.getenv("EPS71_CASE", "all")
+    eps71_destination_code: str = os.getenv(
+        "EPS71_DESTINATION_CODE",
+        "11111",
+    )
+    eps71_second_destination_code: str = os.getenv(
+        "EPS71_SECOND_DESTINATION_CODE",
+        "22222",
+    )
+    eps71_valid_barcode: str = os.getenv(
+        "EPS71_VALID_BARCODE",
+        "710000000000000000000001",
+    )
+    eps71_second_valid_barcode: str = os.getenv(
+        "EPS71_SECOND_VALID_BARCODE",
+        "710000000000000000000002",
+    )
+    eps71_unregistered_barcode: str = os.getenv(
+        "EPS71_UNREGISTERED_BARCODE",
+        "710000000000000000000099",
+    )
+    eps71_default_chute: str = os.getenv(
+        "EPS71_DEFAULT_CHUTE",
+        "CH-04",
+    )
+    eps71_transport_type: str = os.getenv(
+        "EPS71_TRANSPORT_TYPE",
+        "road",
+    )
     timeout_seconds: float = float(os.getenv("TIMEOUT_SECONDS", "10"))
     inbound_timeout_ms: int = int(os.getenv("INBOUND_TIMEOUT_MS", "5000"))
     api_delay_seconds: float = float(os.getenv("API_DELAY_SECONDS", "5"))

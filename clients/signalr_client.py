@@ -209,6 +209,8 @@ class DeviceWebSocketClient:
         target_by_message_type = {
             "auth": "Auth",
             "inbound.register": "RegisterInbound",
+            "destination.assign": "DestinationAssign",
+            "bag.close": "BagClose",
         }
         target = target_by_message_type.get(message_type)
         if target is None:

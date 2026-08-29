@@ -16,7 +16,9 @@
 3. **Stress**: تست‌های volume/endurance مستقل از Success و Negative.
 
 سناریوهای مثبتِ مستقل EPS-40، EPS-49، EPS-53، EPS-55 و EPS-64 در دستهٔ Success
-وجود ندارند. هر تست Negative فقط رفتار منفی همان تسک را بررسی می‌کند.
+وجود ندارند. موارد مثبت EPS-71 نیز به‌صورت مستقل اجرا نمی‌شوند و داخل هر دو
+مسیر موفق قرار گرفته‌اند. هر تست Negative فقط رفتار منفی همان تسک را بررسی
+می‌کند.
 
 ## ساختار پروژه
 
@@ -67,7 +69,8 @@ post/
 ### مسیر موفق پایه
 
 این Flow کل مسیر خطی را اجرا می‌کند: Login، ثبت IP، اتصال و Handshake،
-احراز هویت دستگاه و `RegisterInbound`.
+احراز هویت دستگاه، `RegisterInbound` پایه و دو Case مثبت EPS-71:
+تخصیص مقصد با شوتر و تخصیص مقصد بدون شوتر.
 
 ```powershell
 $env:RUN_E2E="1"
@@ -81,8 +84,10 @@ $env:RUN_E2E="1"
 .venv\Scripts\python.exe -m pytest tests/success/test_websocket_success.py -q -s
 ```
 
-در گزارش این دو Flow، مراحل مشترک با `[BASE]` مشخص می‌شوند. این دو Flow تنها
-مسیرهای مثبت قابل اجرای پروژه هستند.
+این Flow نیز همان دو Case مثبت EPS-71 را بعد از مراحل پایه اجرا می‌کند.
+در گزارش، مراحل پایه با `[BASE]` و مراحل مربوط به تسک با `[EPS-71]` مشخص
+می‌شوند. این دو Flow تنها مسیرهای مثبت قابل اجرای پروژه هستند؛ برای EPS-71
+تست مثبت جداگانه ساخته نشده است.
 
 ## 2) Negative
 
@@ -149,11 +154,39 @@ $env:EPS64_NEGATIVE_CASE="all"
 .venv\Scripts\python.exe -m pytest tests/negative/test_eps64_negative.py -q -s
 ```
 
+### EPS-76
+
+```powershell
+$env:RUN_E2E="1"
+$env:RUN_EPS76_NEGATIVE="1"
+$env:EPS76_CASE="all"
+.venv\Scripts\python.exe -m pytest tests/negative/test_eps76_negative.py -q -s
+```
+
+سناریوهای EPS-76 انتخاب مرسولات برای `bag.close`، تخصیص مقصد، فیلترهای
+نامعتبر، cursor، count و قفل هم‌زمانی مقصد را بررسی می‌کنند. جزئیات در
+`flows/bag/eps76_negative_flow.py` و مستندات `docs/EPS76.md` قرار دارد.
+
+### EPS-71
+
+```powershell
+$env:RUN_E2E="1"
+$env:RUN_EPS71_NEGATIVE="1"
+$env:EPS71_CASE="TC-07"
+.venv\Scripts\python.exe -m pytest tests/negative/test_eps71_negative.py -q -s
+```
+
+EPS-71 اعتبارسنجی و وضعیت `destination.assign` را بررسی می‌کند. دو Case مثبت
+این تسک داخل مسیرهای Success اجرا می‌شوند و Caseهای منفی در این بخش باقی
+می‌مانند. انتخاب مرسولات همچنان در EPS-76 است.
+جزئیات در [docs/EPS71.md](docs/EPS71.md) آمده است.
+
 ### EPS-49 Negative و سایر مستندات
 
 - [Positive flows](docs/POSITIVE_FLOWS.md)
 - [Negative و Stress](docs/NEGATIVE_AND_STRESS.md)
 - [EPS-40](docs/EPS40.md)
+- [EPS-71](docs/EPS71.md)
 - [EPS-49 Negative](docs/EPS49_NEGATIVE.md)
 - [EPS-64](docs/EPS64.md)
 - [Project structure](docs/PROJECT_STRUCTURE.md)
