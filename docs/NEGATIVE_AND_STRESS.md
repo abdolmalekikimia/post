@@ -1,38 +1,58 @@
-# EPS-53/EPS-55 Negative و Stress
+# Negative و Stress
 
-سناریوهای مثبت EPS-53 و EPS-55 داخل مسیر موفق پایه و Flow مستقل
-WebSocket/SignalR اجرا می‌شوند. تست‌های Negative این سند مستقل هستند.
+معماری تست‌ها سه بخش دارد:
+
+1. **Success**: مسیر موفق پایه و Flow مستقل WebSocket/SignalR.
+2. **Negative**: سناریوهای منفی مستقل بر اساس هر تسک.
+3. **Stress**: تست‌های volume/endurance مستقل.
 
 ## Negative
 
-هر Flow مراحل پایهٔ Login، ثبت IP، Handshake و Auth را اجرا می‌کند. اگر یکی از
-این مراحل شکست بخورد، مراحل بعدی اجرا نمی‌شوند. در سناریوها، status منفی
-مورد انتظار مثل `2`، `3` یا `4` باعث Pass شدن تست می‌شود؛ فقط پاسخ متفاوت یا
-خطای ارتباطی Fail است.
+هر Negative Flow فقط رفتار منفی تسک خودش را بررسی می‌کند و سناریوی مثبت
+تسک‌محور ندارد. پاسخ منفی مورد انتظار، مانند `status=2`، `status=3`،
+`status=4` یا HTTP خطادار مورد انتظار، PASS محسوب می‌شود. پاسخ غیرمنتظره یا
+خطای Transport FAIL است.
+
+فایل‌ها:
+
+```text
+tests/negative/test_eps40_negative.py
+tests/negative/test_eps49_negative.py
+tests/negative/test_eps53_negative.py
+tests/negative/test_eps55_negative.py
+tests/negative/test_eps64_negative.py
+```
+
+اگر پیش‌شرط‌های لازم مانند Login، ثبت IP، Handshake یا Auth شکست بخورد،
+مراحل وابسته اجرا نمی‌شوند و `NOT_EXECUTED` گزارش می‌شوند.
 
 ## Stress
 
-Stress دارای warm-up و سپس iterationهای قابل تنظیم است. هر worker اتصال و Auth
-مستقل دارد. ترکیب بار با وزن‌های تعریف‌شده در caseها حفظ می‌شود:
+Stress از Negative جداست و برای volume/endurance اجرا می‌شود. تنظیمات قابل
+تغییر در `config/test.env`:
 
-- EPS-53: بارکد نامعتبر ۳۰٪، وزن/ابعاد ۲۰٪، Core Reject ۲۰٪،
-  Timeout ۱۵٪ و Unavailable ۱۵٪
-- EPS-55: mismatch ۲۰٪، Postal Reject ۲۰٪، Timeout ۱۵٪، Unavailable ۱۵٪،
-  Destination ۱۵٪ و Merge/Returning ۱۵٪
+```dotenv
+STRESS_ITERATIONS=50
+STRESS_WORKERS=1
+STRESS_DELAY_SECONDS=5
+STRESS_FAIL_FAST=true
+```
 
-برای هر درخواست correlationId، payload، response، status مورد انتظار و واقعی و
-latency ثبت می‌شود. `STRESS_FAIL_FAST=true` با اولین پاسخ غیرمنتظره یا خطای
-Transport متوقف می‌کند؛ با `false` همهٔ iterationها برای جمع‌آوری گزارش ادامه
-می‌یابند. فاصلهٔ پیش‌فرض بین درخواست‌ها ۵ ثانیه است.
+برای هر iteration، payload، response، correlationId، expected/actual و latency
+ثبت می‌شود. گزارش نهایی شامل تعداد کل، موفق، پاسخ غیرمنتظره، خطاهای Transport،
+reset، timeout و latencyهای min/avg/max و p50/p95/p99 است.
+
+فایل‌های Stress:
+
+```text
+tests/stress/test_eps53_stress.py
+tests/stress/test_eps55_stress.py
+```
+
+اجرا:
 
 ```powershell
 $env:RUN_E2E="1"
-$env:RUN_EPS53_NEGATIVE="1"
-.venv\Scripts\python.exe -m pytest tests/inbound/test_eps53_negative.py -q -s
-
-$env:RUN_EPS55_NEGATIVE="1"
-.venv\Scripts\python.exe -m pytest tests/inbound/test_eps55_negative.py -q -s
-
 $env:RUN_EPS53_STRESS="1"
 .venv\Scripts\python.exe -m pytest tests/stress/test_eps53_stress.py -q -s
 

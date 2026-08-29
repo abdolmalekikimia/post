@@ -13,11 +13,17 @@ The physical directory remains `post` so existing PyCharm configurations and loc
 | Document area | Project location | Status |
 |---|---|---|
 | Device registration, IP and authentication | `flows/device_lifecycle/`, `services/admin_service.py`, `services/device_service.py` | Developed |
-| Inbound registration | `flows/inbound/`, `tests/inbound/` | Developed |
+| Inbound registration | `flows/inbound/`, `tests/success/` | Developed as part of the base success flow |
 | Core history and merge behavior | `flows/inbound/core_history_flow.py` | Developed |
 | Postal, destination lookup and orchestration | `flows/inbound/eps55_flow.py` | Developed for EPS-55 mocks |
-| Positive EPS-53/EPS-55/EPS-64 execution | `flows/device_lifecycle/positive_scenarios.py`, `flows/inbound/eps64_cases.py` | Included in base and WebSocket flows |
+| Success flows | `flows/device_lifecycle/`, `tests/success/` | Base happy path and independent WebSocket/SignalR happy path only |
+| EPS-40 negative configuration synchronization | `flows/config_sync/eps40_config_sync_flow.py`, `tests/negative/test_eps40_negative.py`, `docs/EPS40.md` | Developed as black-box Auth verification; Mock/Restart is manual |
 | Lazy asynchronous worker verification | `docs/EPS64.md` | External via logs/SQLite; no direct diagnostic endpoint |
+| EPS-40 negative scenarios | `flows/config_sync/eps40_config_sync_flow.py`, `tests/negative/test_eps40_negative.py` | Developed as black-box Auth verification; Mock/Restart is manual |
+| EPS-49 negative scenarios | `flows/device_lifecycle/eps49_negative_flow.py`, `tests/negative/test_eps49_negative.py` | Developed |
+| EPS-53 negative scenarios | `flows/inbound/eps53_negative_flow.py`, `tests/negative/test_eps53_negative.py` | Developed |
+| EPS-55 negative scenarios | `flows/inbound/eps55_negative_flow.py`, `tests/negative/test_eps55_negative.py` | Developed |
+| EPS-64 negative scenarios | `flows/inbound/eps64_negative_flow.py`, `tests/negative/test_eps64_negative.py` | Developed; mock-dependent cases require configured backend |
 | Operational destination and shooter | `flows/destination/` | Reserved |
 | Outbound registration and bag closing | `flows/bag/` | Reserved |
 | Dispatch closing | `flows/dispatch/` | Reserved |

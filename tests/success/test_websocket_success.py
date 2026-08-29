@@ -6,6 +6,7 @@ from flows.device_lifecycle.websocket_flow import run_websocket_flow
 
 
 @pytest.mark.e2e
+@pytest.mark.success
 @pytest.mark.websocket
 def test_websocket_device_flow():
     if os.getenv("RUN_E2E", "0") != "1":

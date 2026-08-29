@@ -1,30 +1,61 @@
 # Positive Flows
 
-تست‌های مثبت مستقل EPS-53، EPS-55 و EPS-64 حذف شده‌اند. سناریوهای آن‌ها اکنون
-در هر دو Flow مثبت زیر اجرا می‌شوند:
+در این پروژه فقط دو Flow مثبت وجود دارد:
 
-- `tests/device_lifecycle/test_auth_success.py` — مسیر موفق پایه
-- `tests/device_lifecycle/test_websocket_flow.py` — Flow مستقل WebSocket/SignalR
+1. مسیر موفق پایهٔ کل فلو
+2. Flow مستقل موفق WebSocket/SignalR
 
-هر دو Flow مراحل مشترک Login، ثبت IP، Handshake و Auth را اجرا می‌کنند و سپس
-ثبت واردهٔ پایه و caseهای EPS-53، EPS-55 و EPS-64 را روی همان اتصال اجرا
-می‌کنند. شکست هر مرحله باعث `NOT_CHECKED` شدن مراحل بعدی می‌شود.
+هیچ تست مثبت task-oriented جداگانه‌ای برای EPS-40، EPS-49، EPS-53، EPS-55 یا
+EPS-64 در این دسته وجود ندارد. سناریوهای task-oriented فقط در بخش Negative
+پیاده‌سازی می‌شوند؛ Stress نیز دستهٔ مستقل خودش است.
 
-گزارش مرحله‌ها با برچسب دامنه تولید می‌شود:
+## مسیر موفق پایه
+
+مسیر:
+
+1. Login ادمین
+2. ثبت IP دستگاه
+3. اتصال WebSocket و SignalR handshake
+4. Auth دستگاه
+5. `RegisterInbound`
+
+فایل اجرا:
 
 ```text
-[EPS-49] Inbound Registration - RegisterInbound
-[EPS-53] RegisterInbound - success_no_discrepancy
-[EPS-55] RegisterInbound - postal_success
-[EPS-64] RegisterInbound staging - image_staging_success
+tests/success/test_base_success.py
 ```
 
-چهار مرحلهٔ آماده‌سازی با برچسب `[BASE]` گزارش می‌شوند.
+اجرا:
 
-در هر مرحله فقط payload ارسالی، response دریافتی و نتیجهٔ انتظار نمایش داده
-می‌شود. پاسخ‌های status `2`، `3` یا `4` در caseهایی که همین status را انتظار
-دارند، به‌عنوان PASS محسوب می‌شوند؛ چون این caseها رفتار مورد انتظار سرویس را
-بررسی می‌کنند.
+```powershell
+$env:RUN_E2E="1"
+.venv\Scripts\python.exe -m pytest tests/success/test_base_success.py -q -s
+```
 
-تعریف caseهای قابل استفادهٔ EPS-53 و EPS-55 برای Negative و Stress باقی
-مانده است و حذف نشده است.
+## Flow مستقل WebSocket/SignalR
+
+این Flow برای اعتبارسنجی مستقل transport و پیام‌های دستگاه است و همان مسیر
+موفق WebSocket را اجرا می‌کند:
+
+```text
+tests/success/test_websocket_success.py
+```
+
+اجرا:
+
+```powershell
+$env:RUN_E2E="1"
+.venv\Scripts\python.exe -m pytest tests/success/test_websocket_success.py -q -s
+```
+
+## گزارش
+
+هر مرحله با برچسب `[BASE]` و شمارهٔ خودش گزارش می‌شود و شامل این سه بخش اصلی
+است:
+
+- `payloadSent`: payload واقعی ارسال‌شده
+- `responseReceived`: پاسخ واقعی Backend
+- `expected` یا `error`: نتیجهٔ assertion و خطای دقیق در صورت شکست
+
+این Flowها خطی هستند؛ شکست هر مرحله باعث می‌شود مراحل بعدی با وضعیت
+`NOT_EXECUTED` ثبت شوند.

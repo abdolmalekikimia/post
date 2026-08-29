@@ -8,6 +8,7 @@ from flows.device_lifecycle.device_auth_flow import run_happy_path
 
 
 @pytest.mark.e2e
+@pytest.mark.success
 def test_auth_and_register_inbound_success():
     if os.getenv("RUN_E2E", "0") != "1":
         pytest.skip("Set RUN_E2E=1 to run against the local EPS service")

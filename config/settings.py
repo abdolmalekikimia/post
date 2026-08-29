@@ -19,6 +19,31 @@ class Settings:
     device_token: str = "test-token-123"
     device_ip: str = os.getenv("DEVICE_IP", "127.0.0.1")
     barcode: str = os.getenv("BARCODE", "123456789012345678901234")
+    eps40_case: str = os.getenv("EPS40_CASE", "TC-02")
+    eps40_active_device_id: str = os.getenv(
+        "EPS40_ACTIVE_DEVICE_ID",
+        "SIM-DEVICE-001",
+    )
+    eps40_active_device_token: str = os.getenv(
+        "EPS40_ACTIVE_DEVICE_TOKEN",
+        "test-token-123",
+    )
+    eps40_inactive_device_id: str = os.getenv(
+        "EPS40_INACTIVE_DEVICE_ID",
+        "EPS40-INACTIVE-001",
+    )
+    eps40_inactive_device_token: str = os.getenv(
+        "EPS40_INACTIVE_DEVICE_TOKEN",
+        "eps40-inactive-token",
+    )
+    eps40_unknown_device_id: str = os.getenv(
+        "EPS40_UNKNOWN_DEVICE_ID",
+        "EPS40-UNKNOWN-001",
+    )
+    eps40_wrong_device_token: str = os.getenv(
+        "EPS40_WRONG_DEVICE_TOKEN",
+        "wrong-device-token",
+    )
     timeout_seconds: float = float(os.getenv("TIMEOUT_SECONDS", "10"))
     inbound_timeout_ms: int = int(os.getenv("INBOUND_TIMEOUT_MS", "5000"))
     api_delay_seconds: float = float(os.getenv("API_DELAY_SECONDS", "5"))
@@ -34,6 +59,23 @@ class Settings:
     eps64_image_description: str = os.getenv(
         "EPS64_IMAGE_DESCRIPTION",
         "front",
+    )
+    eps64_negative_case: str = os.getenv("EPS64_NEGATIVE_CASE", "all")
+    eps64_negative_barcode: str = os.getenv(
+        "EPS64_NEGATIVE_BARCODE",
+        "300000000000000000000010",
+    )
+    eps64_rejected_barcode: str = os.getenv(
+        "EPS64_REJECTED_BARCODE",
+        "300000000000000000000011",
+    )
+    eps64_timeout_barcode: str = os.getenv(
+        "EPS64_TIMEOUT_BARCODE",
+        "300000000000000000000012",
+    )
+    eps64_unavailable_barcode: str = os.getenv(
+        "EPS64_UNAVAILABLE_BARCODE",
+        "300000000000000000000013",
     )
     stress_iterations: int = int(os.getenv("STRESS_ITERATIONS", "50"))
     stress_workers: int = max(1, int(os.getenv("STRESS_WORKERS", "1")))

@@ -9,6 +9,7 @@ from flows.inbound.eps55_negative_flow import (
 
 
 @pytest.mark.e2e
+@pytest.mark.negative
 @pytest.mark.eps55_negative
 def test_eps55_negative_scenarios():
     if os.getenv("RUN_E2E", "0") != "1":

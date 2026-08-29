@@ -1,36 +1,56 @@
 # EPS-64 — Lazy Async Supplementary Upload
 
-## Scope
+## جایگاه EPS-64 در معماری تست
 
-این بخش فقط شروع ارسال غیرهمزمان را از مسیر `RegisterInbound` بررسی می‌کند.
-پاسخ موفق WebSocket باید `status=0` باشد. بعد از این پاسخ، سرویس Edge آیتم
-تصویر یا `supplementaryData` را در صف محلی قرار می‌دهد و `LazyUploadWorker`
-آن را به‌صورت background به Core/Object Storage ارسال می‌کند.
+EPS-64 تست مثبت مستقل ندارد. مسیرهای Success پروژه فقط در این دو فایل هستند:
 
-طبق نیازمندی EPS-64، endpoint مستقیمی برای مشاهده صف یا اجرای دستی Worker وجود
-ندارد. بنابراین حذف رکورد پس از موفقیت Worker باید از طریق لاگ سرویس یا
-بازرسی SQLite بررسی شود و assertion تست WebSocket عمداً فقط پاسخ بلادرنگ را
-بررسی می‌کند.
+```text
+tests/success/test_base_success.py
+tests/success/test_websocket_success.py
+```
 
-## محل اجرای مسیر موفق
+سناریوهای task-oriented مربوط به EPS-64 فقط به‌صورت Negative اجرا می‌شوند:
 
-سناریوهای مثبت EPS-64 دیگر تست مستقل ندارند و در هر دو Flow مثبت اجرا می‌شوند:
+```text
+tests/negative/test_eps64_negative.py
+flows/inbound/eps64_negative_flow.py
+```
 
-1. مسیر موفق پایه: `tests/device_lifecycle/test_auth_success.py`
-2. Flow مستقل: `tests/device_lifecycle/test_websocket_flow.py`
+## Negativeهای قابل اجرا
 
-در صورت شکست هر مرحله، مراحل بعدی اجرا نمی‌شوند و برای هر مرحله payload
-ارسالی و response دریافتی در گزارش چاپ می‌شود.
+- `invalid_barcode`
+- `image_missing_image_id`
+- `image_missing_content`
+- `image_invalid_mime_type`
+- `supplementary_data_incomplete`
+- `image_rejected`
+- `image_timeout`
+- `image_unavailable`
 
-## اجرا همراه با مسیرهای مثبت
+پاسخ منفی مورد انتظار PASS است؛ پاسخ غیرمنتظره یا خطای Transport FAIL است.
+اگر پیش‌شرط‌های Flow شکست بخورند، مراحل بعدی اجرا نمی‌شوند.
+
+## اجرا
 
 ```powershell
 $env:RUN_E2E="1"
-.venv\Scripts\python.exe -m pytest tests/device_lifecycle/test_auth_success.py -q -s
-.venv\Scripts\python.exe -m pytest tests/device_lifecycle/test_websocket_flow.py -q -s
+$env:RUN_EPS64_NEGATIVE="1"
+$env:EPS64_NEGATIVE_CASE="all"
+.venv\Scripts\python.exe -m pytest tests/negative/test_eps64_negative.py -q -s
 ```
 
-مقدارهای قابل تنظیم در `config/test.env`:
+برای اجرای یک Case مشخص، مقدار `EPS64_NEGATIVE_CASE` را برابر نام Case قرار
+بده. Caseهای `image_rejected`، `image_timeout` و `image_unavailable` به Mock
+متناظر Backend نیاز دارند.
+
+## نکتهٔ Worker
+
+پاسخ `status=0` در `RegisterInbound` فقط Stage شدن آیتم را تأیید می‌کند.
+تأیید نهایی ارسال غیرهمزمان، retry، unavailable، dead-letter و cleanup باید
+از طریق لاگ سرویس یا SQLite انجام شود؛ چون endpoint تشخیصی مستقیمی در اختیار
+این پروژه نیست.
+
+مقدارهای قابل تنظیم:
 
 ```dotenv
 EPS64_IMAGE_BARCODE=300000000000000000000001
@@ -38,25 +58,3 @@ EPS64_SUPPLEMENTARY_BARCODE=300000000000000000000002
 EPS64_IMAGE_ID=img-001
 EPS64_IMAGE_DESCRIPTION=front
 ```
-
-قبل از اجرا، Mockهای Core، Object Storage و Worker را طبق نیازمندی تنظیم و
-سرویس را restart کنید. برای مسیر موفق، overrideها باید روی حالت پیش‌فرض
-`Success` باشند.
-
-## افزودن سناریوهای منفی آینده
-
-هر سناریو با `Eps64Case` تعریف می‌شود و orchestration تغییر نمی‌کند:
-
-```python
-Eps64Case(
-    name="image_rejected",
-    barcode="300000000000000000000010",
-    images=(image_payload,),
-    expected_status=2,
-    expected_error_contains="rejected",
-)
-```
-
-سناریوهای retry، timeout، unavailable و dead-letter نیازمند بررسی وضعیت صف
-و زمان‌بندی Worker هستند و باید با لاگ یا SQLite تکمیل شوند، نه با پاسخ مستقیم
-WebSocket.
