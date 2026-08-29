@@ -20,6 +20,7 @@ The physical directory remains `post` so existing PyCharm configurations and loc
 | EPS-40 negative configuration synchronization | `flows/config_sync/eps40_config_sync_flow.py`, `tests/negative/test_eps40_negative.py`, `docs/EPS40.md` | Developed as black-box Auth verification; Mock/Restart is manual |
 | Lazy asynchronous worker verification | `docs/EPS64.md` | External via logs/SQLite; no direct diagnostic endpoint |
 | EPS-40 negative scenarios | `flows/config_sync/eps40_config_sync_flow.py`, `tests/negative/test_eps40_negative.py` | Developed as black-box Auth verification; Mock/Restart is manual |
+| EPS-46 negative AutoDispatchPolicy scenarios | `flows/config_sync/eps46_negative_flow.py`, `tests/negative/test_eps46_negative.py`, `docs/EPS46.md` | Developed as black-box Config Sync verification; DB/log confirmation is manual |
 | EPS-49 negative scenarios | `flows/device_lifecycle/eps49_negative_flow.py`, `tests/negative/test_eps49_negative.py` | Developed |
 | EPS-53 negative scenarios | `flows/inbound/eps53_negative_flow.py`, `tests/negative/test_eps53_negative.py` | Developed |
 | EPS-55 negative scenarios | `flows/inbound/eps55_negative_flow.py`, `tests/negative/test_eps55_negative.py` | Developed |

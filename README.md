@@ -102,6 +102,20 @@ $env:EPS40_CASE="TC-02"
 Caseهای قابل اجرای خودکار: `TC-02`، `TC-03`، `TC-04`، `TC-06` و `TC-07`.
 برای Caseهای وابسته به Mock، پس از تغییر Snapshot سرویس را Restart کن.
 
+### EPS-46
+
+```powershell
+$env:RUN_E2E="1"
+$env:RUN_EPS46_NEGATIVE="1"
+$env:EPS46_CASE="TC-03"
+.venv\Scripts\python.exe -m pytest tests/negative/test_eps46_negative.py -q -s
+```
+
+Caseهای `TC-03` و `TC-04` رد شدن کل Sync در پیکربندی نامعتبر را بررسی می‌کنند.
+`TC-05` یک Case اکتشافی برای پذیرش deadline منفی در حالت Disabled است. برای
+هر Case باید `AutoDispatchPolicy` و `ConfigVersion` در Mock تغییر کند و سرویس
+Restart شود. جزئیات در [docs/EPS46.md](docs/EPS46.md) آمده است.
+
 ### EPS-49
 
 ```powershell

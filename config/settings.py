@@ -44,6 +44,23 @@ class Settings:
         "EPS40_WRONG_DEVICE_TOKEN",
         "wrong-device-token",
     )
+    eps46_case: str = os.getenv("EPS46_CASE", "TC-03")
+    eps46_new_device_id: str = os.getenv(
+        "EPS46_NEW_DEVICE_ID",
+        "EPS46-NEW-DEVICE-001",
+    )
+    eps46_new_device_token: str = os.getenv(
+        "EPS46_NEW_DEVICE_TOKEN",
+        "eps46-new-token",
+    )
+    eps46_active_device_id: str = os.getenv(
+        "EPS46_ACTIVE_DEVICE_ID",
+        "SIM-DEVICE-001",
+    )
+    eps46_active_device_token: str = os.getenv(
+        "EPS46_ACTIVE_DEVICE_TOKEN",
+        "test-token-123",
+    )
     timeout_seconds: float = float(os.getenv("TIMEOUT_SECONDS", "10"))
     inbound_timeout_ms: int = int(os.getenv("INBOUND_TIMEOUT_MS", "5000"))
     api_delay_seconds: float = float(os.getenv("API_DELAY_SECONDS", "5"))
