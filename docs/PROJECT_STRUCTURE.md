@@ -27,6 +27,9 @@ The physical directory remains `post` so existing PyCharm configurations and loc
 | EPS-64 negative scenarios | `flows/inbound/eps64_negative_flow.py`, `tests/negative/test_eps64_negative.py` | Developed; mock-dependent cases require configured backend |
 | EPS-71 negative destination assignment scenarios | `flows/destination/eps71_negative_flow.py`, `tests/negative/test_eps71_negative.py`, `docs/EPS71.md` | Developed; post-bag cases depend on `BagClose` contract |
 | EPS-71 positive destination assignment cases | `flows/destination/eps71_success_flow.py`, `tests/success/` | Embedded in both Success flows; TC-01 with chute and TC-02 without chute |
+| EPS-73 positive destination update cases | `flows/destination/eps73_success_flow.py`, `tests/success/` | Embedded in both Success flows; TC-01 through TC-04 with bag.close verification |
+| EPS-73 negative destination update scenario | `flows/destination/eps73_negative_flow.py`, `tests/negative/test_eps73_negative.py`, `docs/EPS73.md` | Developed; TC-05 verifies safe rejection after bag close |
+| EPS-73 stress race scenario | `flows/destination/eps73_stress_flow.py`, `tests/stress/test_eps73_stress.py` | Developed; TC-06 runs concurrent bag.close and destination.assign |
 | EPS-76 negative bag selection scenarios | `flows/bag/eps76_negative_flow.py`, `tests/negative/test_eps76_negative.py`, `docs/EPS76.md` | Developed; concurrent cases require two independent WebSocket connections |
 | Operational destination and shooter | `flows/destination/` | Reserved |
 | Outbound registration and bag closing | `flows/bag/` | Reserved |

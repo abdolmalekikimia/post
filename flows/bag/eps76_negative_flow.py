@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import time
 from typing import Any
+from uuid import uuid4
 
 from assertions.bag_assertions import (
     assert_bag_close_response,
@@ -42,6 +43,20 @@ class Eps76Result:
     report: ExecutionReport
 
 
+class _Eps76BarcodeGenerator:
+    """Generate numeric 24-digit barcodes unique for the current flow run."""
+
+    def __init__(self, prefix: str) -> None:
+        self.prefix = prefix
+        self._counter = 0
+        self._seed = uuid4().int % 900_000
+
+    def next(self) -> str:
+        suffix = (self._seed + self._counter) % 900_000 + 100_000
+        self._counter += 1
+        return f"{self.prefix}{suffix:06d}"[:24].ljust(24, "0")
+
+
 def build_eps76_negative_cases(
     run_settings: Settings = settings,
 ) -> tuple[Eps76Case, ...]:
@@ -57,7 +72,7 @@ def build_eps76_negative_cases(
             "TC-08",
             "Cursor barcode is outside the selected chute filter",
             2,
-            expected_error_contains="cursor",
+            expected_error_contains="excluded by the destination/state/chute filters",
             setup_count=2,
             setup_chutes=("CH-04", "CH-05"),
             bag_payload={"chuteIds": ["CH-04"], "lastBarcode": "__CH05__"},
@@ -180,6 +195,7 @@ def _prepare_parcels(
     run_settings: Settings,
     report: ExecutionReport,
     step_index: int,
+    barcode_generator: _Eps76BarcodeGenerator,
 ) -> tuple[list[str], int]:
     count = case.setup_count
     if count <= 0:
@@ -188,9 +204,7 @@ def _prepare_parcels(
     destinations = case.setup_destinations or (case.setup_destination,)
     barcodes: list[str] = []
     for index in range(count):
-        barcode = (
-            f"{run_settings.eps76_barcode_prefix}{index + 1:06d}"
-        )[:24].ljust(24, "0")
+        barcode = barcode_generator.next()
         destination = destinations[index % len(destinations)]
         chute = (
             case.setup_chutes[index % len(case.setup_chutes)]
@@ -400,6 +414,9 @@ def run_eps76_negative_flow(
         if run_settings.api_delay_seconds > 0:
             time.sleep(run_settings.api_delay_seconds)
         device = DeviceService(ws)
+        barcode_generator = _Eps76BarcodeGenerator(
+            run_settings.eps76_barcode_prefix
+        )
         run_step(
             report,
             "4. [PRECONDITION] Device Authentication",
@@ -422,7 +439,12 @@ def run_eps76_negative_flow(
             if run_settings.api_delay_seconds > 0:
                 time.sleep(run_settings.api_delay_seconds)
             prepared, step_index = _prepare_parcels(
-                device, case, run_settings, report, step_index
+                device,
+                case,
+                run_settings,
+                report,
+                step_index,
+                barcode_generator,
             )
             if case.concurrency:
                 step_name = (

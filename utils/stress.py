@@ -24,7 +24,7 @@ def percentile(values: list[float], percentage: float) -> float:
 class StressSample:
     iteration: int
     case_name: str
-    expected_status: int
+    expected_status: Any
     actual_status: Any = None
     passed: bool = False
     latency_seconds: float = 0.0

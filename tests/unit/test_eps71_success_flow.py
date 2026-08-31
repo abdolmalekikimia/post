@@ -63,9 +63,9 @@ def test_eps71_success_cases_send_with_and_without_chute_payloads():
 
     assert [target for target, _ in client.calls] == [
         "RegisterInbound",
-        "DestinationAssign",
+        "AssignDestination",
         "RegisterInbound",
-        "DestinationAssign",
+        "AssignDestination",
     ]
     assert client.calls[1][1][0]["payload"] == {
         "barcode": "710000000000000000000001",

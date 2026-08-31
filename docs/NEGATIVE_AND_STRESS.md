@@ -21,6 +21,9 @@ tests/negative/test_eps49_negative.py
 tests/negative/test_eps53_negative.py
 tests/negative/test_eps55_negative.py
 tests/negative/test_eps64_negative.py
+tests/negative/test_eps71_negative.py
+tests/negative/test_eps73_negative.py
+tests/negative/test_eps76_negative.py
 ```
 
 اگر پیش‌شرط‌های لازم مانند Login، ثبت IP، Handshake یا Auth شکست بخورد،
@@ -47,6 +50,7 @@ reset، timeout و latencyهای min/avg/max و p50/p95/p99 است.
 ```text
 tests/stress/test_eps53_stress.py
 tests/stress/test_eps55_stress.py
+tests/stress/test_eps73_stress.py
 ```
 
 اجرا:
@@ -58,4 +62,16 @@ $env:RUN_EPS53_STRESS="1"
 
 $env:RUN_EPS55_STRESS="1"
 .venv\Scripts\python.exe -m pytest tests/stress/test_eps55_stress.py -q -s
+
+$env:RUN_EPS73_STRESS="1"
+.venv\Scripts\python.exe -m pytest tests/stress/test_eps73_stress.py -q -s
 ```
+
+هر Stress Flow بر اساس EPS خودش اجرا می‌شود. Stress مربوط به EPS-73، یعنی
+TC-06، در هر iteration یک مرسولهٔ یکتا می‌سازد و `bag.close` و
+`destination.assign` را با دو اتصال مستقل هم‌زمان اجرا می‌کند. فقط دو نتیجه
+اتمی قابل قبول است: بستن کیسه زودتر و رد شدن تخصیص، یا موفق شدن تخصیص و
+انتخاب‌نشدن مرسوله توسط `bag.close`. قرارگرفتن مرسوله در هر دو نتیجه FAIL است.
+برای جلوگیری از تداخل مرسوله‌های iterationهای مختلف، EPS-73 فقط با
+`STRESS_WORKERS=1` اجرا می‌شود؛ هم‌زمانی واقعی داخل هر iteration با دو اتصال
+مستقل انجام می‌شود.

@@ -10,6 +10,10 @@ from flows.destination.eps71_success_flow import (
     run_eps71_success_cases,
     success_step_names,
 )
+from flows.destination.eps73_success_flow import (
+    run_eps73_success_cases,
+    success_step_names as eps73_success_step_names,
+)
 from services.admin_service import AdminService
 from services.device_service import DeviceService
 from utils.step_report import ExecutionReport, exchange_detail, run_step
@@ -38,6 +42,7 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
         "4. [BASE] Device Authentication - Auth",
         "5. [BASE] Inbound Registration - RegisterInbound",
         *success_step_names(6),
+        *eps73_success_step_names(10),
     )
     rest_client = RestClient(
         run_settings.base_url,
@@ -144,9 +149,18 @@ def run_happy_path(run_settings: Settings = settings) -> HappyPathResult:
             wait_between_steps=wait_between_api_calls,
             start_step=6,
         )
+        wait_between_api_calls(run_settings.api_delay_seconds)
+        eps73_success = run_eps73_success_cases(
+            device=device,
+            run_settings=run_settings,
+            report=report,
+            wait_between_steps=wait_between_api_calls,
+            start_step=10,
+        )
         scenario_responses = {
             "EPS-49": {"base_register": register_response},
             "EPS-71": eps71_success.responses,
+            "EPS-73": eps73_success.responses,
         }
     finally:
         ws.close()

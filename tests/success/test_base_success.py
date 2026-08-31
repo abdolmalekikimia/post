@@ -18,3 +18,9 @@ def test_auth_and_register_inbound_success():
     assert_success_response(result.auth_response, "Auth")
     assert response_field(result.auth_response, "sessionId")
     assert_success_response(result.register_response, "RegisterInbound")
+    assert set(result.scenario_responses["EPS-73"]) == {
+        "TC-01",
+        "TC-02",
+        "TC-03",
+        "TC-04",
+    }

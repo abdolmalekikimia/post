@@ -88,5 +88,5 @@ def test_send_message_supports_destination_assignment_and_bag_close():
         }
     )
 
-    assert assignment["target"] == "DestinationAssign"
-    assert bag_close["target"] == "BagClose"
+    assert assignment["target"] == "AssignDestination"
+    assert bag_close["target"] == "CloseBag"

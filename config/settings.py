@@ -102,6 +102,46 @@ class Settings:
         "EPS71_TRANSPORT_TYPE",
         "road",
     )
+    eps73_case: str = os.getenv("EPS73_CASE", "all")
+    eps73_initial_destination_code: str = os.getenv(
+        "EPS73_INITIAL_DESTINATION_CODE",
+        "11111",
+    )
+    eps73_new_destination_code: str = os.getenv(
+        "EPS73_NEW_DESTINATION_CODE",
+        "22222",
+    )
+    eps73_closed_destination_code: str = os.getenv(
+        "EPS73_CLOSED_DESTINATION_CODE",
+        "33333",
+    )
+    eps73_initial_chute: str = os.getenv(
+        "EPS73_INITIAL_CHUTE",
+        "CH-A",
+    )
+    eps73_new_chute: str = os.getenv(
+        "EPS73_NEW_CHUTE",
+        "CH-B",
+    )
+    eps73_alternate_chute: str = os.getenv(
+        "EPS73_ALTERNATE_CHUTE",
+        "CH-Z",
+    )
+    eps73_transport_type: str = os.getenv(
+        "EPS73_TRANSPORT_TYPE",
+        "road",
+    )
+    eps73_barcode_prefix: str = os.getenv(
+        "EPS73_BARCODE_PREFIX",
+        "730000000000000000",
+    )
+    eps73_negative_barcode: str = os.getenv(
+        "EPS73_NEGATIVE_BARCODE",
+        "730000000000000000000099",
+    )
+    eps73_inbound_timeout_ms: int = int(
+        os.getenv("EPS73_INBOUND_TIMEOUT_MS", "3000")
+    )
     timeout_seconds: float = float(os.getenv("TIMEOUT_SECONDS", "10"))
     inbound_timeout_ms: int = int(os.getenv("INBOUND_TIMEOUT_MS", "5000"))
     api_delay_seconds: float = float(os.getenv("API_DELAY_SECONDS", "5"))

@@ -115,7 +115,7 @@ class DeviceService:
             },
         )
         return self.client.invoke(
-            "DestinationAssign",
+            "AssignDestination",
             [envelope],
             invocation_id=envelope["correlationId"],
         )
@@ -152,7 +152,7 @@ class DeviceService:
         )
         envelope = self._envelope("bag.close", payload)
         return self.client.invoke(
-            "BagClose",
+            "CloseBag",
             [envelope],
             invocation_id=envelope["correlationId"],
         )

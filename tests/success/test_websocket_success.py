@@ -17,3 +17,9 @@ def test_websocket_device_flow():
     assert result.connection_response["response"] == [{}]
     assert result.auth_response
     assert result.register_response
+    assert set(result.scenario_responses["EPS-73"]) == {
+        "TC-01",
+        "TC-02",
+        "TC-03",
+        "TC-04",
+    }

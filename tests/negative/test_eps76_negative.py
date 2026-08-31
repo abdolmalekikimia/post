@@ -47,3 +47,6 @@ def test_eps76_negative_case_catalog():
     ]
     assert all(case.expected_status in (0, 2) for case in cases)
     assert cases[3].expected_result_type == "NoEligibleParcels"
+    assert cases[0].expected_error_contains == (
+        "excluded by the destination/state/chute filters"
+    )

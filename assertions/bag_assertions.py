@@ -73,3 +73,37 @@ def bag_count(response: dict[str, Any]) -> int:
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def assert_bag_count(
+    response: dict[str, Any],
+    expected_count: int,
+    operation: str = "bag.close",
+) -> None:
+    payload = response_payload(response)
+    counts = payload.get("counts")
+    assert isinstance(counts, dict) and "n" in counts, (
+        f"{operation}: expected counts.n in response; response={response}"
+    )
+    actual_count = bag_count(response)
+    assert actual_count == expected_count, (
+        f"{operation}: expected counts.n={expected_count}, "
+        f"got {actual_count}; response={response}"
+    )
+
+
+def assert_bag_count_at_least(
+    response: dict[str, Any],
+    minimum_count: int,
+    operation: str = "bag.close",
+) -> None:
+    payload = response_payload(response)
+    counts = payload.get("counts")
+    assert isinstance(counts, dict) and "n" in counts, (
+        f"{operation}: expected counts.n in response; response={response}"
+    )
+    actual_count = bag_count(response)
+    assert actual_count >= minimum_count, (
+        f"{operation}: expected counts.n>={minimum_count}, "
+        f"got {actual_count}; response={response}"
+    )

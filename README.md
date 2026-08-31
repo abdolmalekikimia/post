@@ -16,7 +16,7 @@
 3. **Stress**: تست‌های volume/endurance مستقل از Success و Negative.
 
 سناریوهای مثبتِ مستقل EPS-40، EPS-49، EPS-53، EPS-55 و EPS-64 در دستهٔ Success
-وجود ندارند. موارد مثبت EPS-71 نیز به‌صورت مستقل اجرا نمی‌شوند و داخل هر دو
+وجود ندارند. موارد مثبت EPS-71 و EPS-73 نیز به‌صورت مستقل اجرا نمی‌شوند و داخل هر دو
 مسیر موفق قرار گرفته‌اند. هر تست Negative فقط رفتار منفی همان تسک را بررسی
 می‌کند.
 
@@ -31,7 +31,7 @@ post/
 │   ├── device_lifecycle/   # مسیر موفق پایه، WebSocket و EPS-49 Negative
 │   ├── config_sync/        # EPS-40 Negative
 │   ├── inbound/            # EPS-53/EPS-55/EPS-64 و Stress
-│   ├── destination/        # آماده توسعه
+│   ├── destination/        # EPS-71/EPS-73 و آماده توسعه
 │   ├── bag/                # آماده توسعه
 │   ├── dispatch/           # آماده توسعه
 │   └── reporting/          # آماده توسعه
@@ -69,8 +69,8 @@ post/
 ### مسیر موفق پایه
 
 این Flow کل مسیر خطی را اجرا می‌کند: Login، ثبت IP، اتصال و Handshake،
-احراز هویت دستگاه، `RegisterInbound` پایه و دو Case مثبت EPS-71:
-تخصیص مقصد با شوتر و تخصیص مقصد بدون شوتر.
+احراز هویت دستگاه، `RegisterInbound` پایه، Caseهای مثبت EPS-71 و Caseهای
+مثبت EPS-73 را اجرا می‌کند.
 
 ```powershell
 $env:RUN_E2E="1"
@@ -84,10 +84,10 @@ $env:RUN_E2E="1"
 .venv\Scripts\python.exe -m pytest tests/success/test_websocket_success.py -q -s
 ```
 
-این Flow نیز همان دو Case مثبت EPS-71 را بعد از مراحل پایه اجرا می‌کند.
-در گزارش، مراحل پایه با `[BASE]` و مراحل مربوط به تسک با `[EPS-71]` مشخص
-می‌شوند. این دو Flow تنها مسیرهای مثبت قابل اجرای پروژه هستند؛ برای EPS-71
-تست مثبت جداگانه ساخته نشده است.
+این Flow نیز همان Caseهای مثبت EPS-71 و EPS-73 را بعد از مراحل پایه اجرا
+می‌کند. در گزارش، مراحل پایه با `[BASE]` و مراحل مربوط به تسک با برچسب
+`[EPS-71]` یا `[EPS-73]` مشخص می‌شوند. این دو Flow تنها مسیرهای مثبت قابل
+اجرای پروژه هستند؛ برای این تسک‌ها تست مثبت جداگانه ساخته نشده است.
 
 ## 2) Negative
 
@@ -154,6 +154,32 @@ $env:EPS64_NEGATIVE_CASE="all"
 .venv\Scripts\python.exe -m pytest tests/negative/test_eps64_negative.py -q -s
 ```
 
+### EPS-71
+
+```powershell
+$env:RUN_E2E="1"
+$env:RUN_EPS71_NEGATIVE="1"
+$env:EPS71_CASE="TC-07"
+.venv\Scripts\python.exe -m pytest tests/negative/test_eps71_negative.py -q -s
+```
+
+EPS-71 اعتبارسنجی و وضعیت `destination.assign` را بررسی می‌کند. Caseهای مثبت
+این تسک داخل مسیرهای Success اجرا می‌شوند و Caseهای منفی در این بخش باقی
+می‌مانند. جزئیات در [docs/EPS71.md](docs/EPS71.md) آمده است.
+
+### EPS-73
+
+```powershell
+$env:RUN_E2E="1"
+$env:RUN_EPS73_NEGATIVE="1"
+$env:EPS73_CASE="TC-05"
+.venv\Scripts\python.exe -m pytest tests/negative/test_eps73_negative.py -q -s
+```
+
+TC-05 ابتدا مرسوله را ثبت و به مقصد اولیه تخصیص می‌دهد، کیسه را می‌بندد و
+سپس تغییر مقصد را با انتظار `status=2` و خطای بسته‌بودن مرسوله بررسی می‌کند.
+جزئیات در [docs/EPS73.md](docs/EPS73.md) آمده است.
+
 ### EPS-76
 
 ```powershell
@@ -167,26 +193,13 @@ $env:EPS76_CASE="all"
 نامعتبر، cursor، count و قفل هم‌زمانی مقصد را بررسی می‌کنند. جزئیات در
 `flows/bag/eps76_negative_flow.py` و مستندات `docs/EPS76.md` قرار دارد.
 
-### EPS-71
-
-```powershell
-$env:RUN_E2E="1"
-$env:RUN_EPS71_NEGATIVE="1"
-$env:EPS71_CASE="TC-07"
-.venv\Scripts\python.exe -m pytest tests/negative/test_eps71_negative.py -q -s
-```
-
-EPS-71 اعتبارسنجی و وضعیت `destination.assign` را بررسی می‌کند. دو Case مثبت
-این تسک داخل مسیرهای Success اجرا می‌شوند و Caseهای منفی در این بخش باقی
-می‌مانند. انتخاب مرسولات همچنان در EPS-76 است.
-جزئیات در [docs/EPS71.md](docs/EPS71.md) آمده است.
-
 ### EPS-49 Negative و سایر مستندات
 
 - [Positive flows](docs/POSITIVE_FLOWS.md)
 - [Negative و Stress](docs/NEGATIVE_AND_STRESS.md)
 - [EPS-40](docs/EPS40.md)
 - [EPS-71](docs/EPS71.md)
+- [EPS-73](docs/EPS73.md)
 - [EPS-49 Negative](docs/EPS49_NEGATIVE.md)
 - [EPS-64](docs/EPS64.md)
 - [Project structure](docs/PROJECT_STRUCTURE.md)
@@ -202,6 +215,9 @@ $env:RUN_EPS53_STRESS="1"
 
 $env:RUN_EPS55_STRESS="1"
 .venv\Scripts\python.exe -m pytest tests/stress/test_eps55_stress.py -q -s
+
+$env:RUN_EPS73_STRESS="1"
+.venv\Scripts\python.exe -m pytest tests/stress/test_eps73_stress.py -q -s
 ```
 
 تنظیمات Stress در `config/test.env`:
@@ -215,4 +231,7 @@ STRESS_FAIL_FAST=true
 
 برای هر مرحله payload ارسالی، response دریافتی، انتظار و نتیجه ثبت می‌شود.
 مراحل بعدی پس از شکست مرحلهٔ قبلی اجرا نمی‌شوند و با `NOT_EXECUTED` گزارش
-می‌شوند.
+می‌شوند. هر Stress Flow بر اساس EPS خودش جداست. EPS-73 در هر iteration
+`bag.close` و `destination.assign` را با دو اتصال WebSocket هم‌زمان اجرا
+می‌کند و race condition را بررسی می‌کند. برای EPS-73 مقدار
+`STRESS_WORKERS=1` الزامی است؛ چون هر iteration خودش دو عملیات هم‌زمان دارد.

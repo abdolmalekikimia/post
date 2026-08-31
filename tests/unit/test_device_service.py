@@ -60,7 +60,7 @@ def test_bag_close_sends_empty_filters_without_adding_omitted_filters():
 
     assert response == {"status": 2, "resultType": "Error"}
     target, arguments, _ = calls[0]
-    assert target == "BagClose"
+    assert target == "CloseBag"
     payload = arguments[0]["payload"]
     assert payload["destinationCenterCode"] == "11111"
     assert payload["chuteIds"] == []
@@ -89,7 +89,7 @@ def test_device_service_builds_destination_assignment_message():
 
     assert response == {"status": 1}
     target, arguments, _ = calls[0]
-    assert target == "DestinationAssign"
+    assert target == "AssignDestination"
     assert arguments[0]["messageType"] == "destination.assign"
     assert arguments[0]["payload"] == {
         "barcode": "760000000000000000000001",

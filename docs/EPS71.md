@@ -22,9 +22,10 @@ EPS-71 اعتبارسنجی و نگهداری مقصد عملیاتی مرسول
 - `status=1`: تخصیص موفق
 - `status=2`: خطا
 
-target فعلی در کلاینت پروژه `DestinationAssign` است. اگر Backend target
-دیگری ارائه می‌دهد، باید نام رسمی Hub از تیم Backend دریافت و در کلاینت
-هماهنگ شود؛ payload تا قبل از رسیدن به متد معتبر Hub پردازش نمی‌شود.
+target واقعی Hub در کلاینت پروژه `AssignDestination` است. مقدار
+`messageType` همچنان `destination.assign` باقی می‌ماند؛ target باید دقیقاً با
+نام متد Hub یکی باشد. `DestinationAssign` نام payload/response است و متد Hub
+نیست.
 
 ## Caseهای مثبت در Success
 
