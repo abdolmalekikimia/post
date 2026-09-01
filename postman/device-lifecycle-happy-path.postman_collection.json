@@ -1,0 +1,199 @@
+{
+  "info": {
+    "name": "Device Lifecycle - Happy Path",
+    "description": "Successful Device Lifecycle flow: admin login, device IP registration, WebSocket Auth, and RegisterItem. Run the REST requests first. Open the Auth WebSocket request, connect once, send Auth, then send the RegisterItem payload on the same WebSocket connection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.example.invalid"
+    },
+    {
+      "key": "wsUrl",
+      "value": "wss://api.example.invalid"
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin"
+    },
+    {
+      "key": "adminPassword",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "deviceId",
+      "value": "demo-device"
+    },
+    {
+      "key": "deviceToken",
+      "value": ""
+    },
+    {
+      "key": "deviceIp",
+      "value": "0.0.0.0"
+    },
+    {
+      "key": "barcode",
+      "value": "123456789012345678901234"
+    },
+    {
+      "key": "inboundTimeoutMs",
+      "value": "5000"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 - Admin REST",
+      "item": [
+        {
+          "name": "1.1 Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login HTTP status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('Login response contains token', function () {",
+                  "  pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('adminToken', body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Run this request first. The returned token is stored automatically in the collection variable adminToken.",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "1.2 Update Device IP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update device IP HTTP status is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "description": "Run after Login. This registers the allowed source IP for the seeded device.",
+            "url": {
+              "raw": "{{baseUrl}}/api/devices/{{deviceId}}/ip",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "devices",
+                "{{deviceId}}",
+                "ip"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ipAddress\": \"{{deviceIp}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 - Device WebSocket",
+      "description": "The WebSocket messages must be sent on the same connection. Open 2.1, click Connect, send Auth, verify status=0 and sessionId, then use the payload from 2.2 in the same connected tab and send RegisterItem.",
+      "item": [
+        {
+          "name": "2.1 Auth - success",
+          "request": {
+            "method": "GET",
+            "description": "Connect once, then send this message. Expected response: status=0 and a non-empty sessionId.",
+            "url": {
+              "raw": "{{wsUrl}}/hubs/device",
+              "protocol": "ws",
+              "host": [
+                "{{wsUrl}}"
+              ],
+              "path": [
+                "ws",
+                "device"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"protocolVersion\":\"1.0\",\"messageType\":\"auth\",\"correlationId\":\"{{$guid}}\",\"timestamp\":\"{{$isoTimestamp}}\",\"payload\":{\"deviceId\":\"{{deviceId}}\",\"deviceToken\":\"{{deviceToken}}\"}}"
+            }
+          }
+        },
+        {
+          "name": "2.2 RegisterItem - success",
+          "request": {
+            "method": "GET",
+            "description": "Do not open a second connection. Copy this payload into the already-connected Auth WebSocket tab and send it after Auth succeeds. Expected response: status=0.",
+            "url": {
+              "raw": "{{wsUrl}}/hubs/device",
+              "protocol": "ws",
+              "host": [
+                "{{wsUrl}}"
+              ],
+              "path": [
+                "ws",
+                "device"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"protocolVersion\":\"1.0\",\"messageType\":\"item.register\",\"correlationId\":\"{{$guid}}\",\"timestamp\":\"{{$isoTimestamp}}\",\"payload\":{\"barcodes\":[\"{{barcode}}\"],\"readTimestamp\":\"{{$isoTimestamp}}\",\"physicalAttributes\":{\"weightGrams\":1500,\"dimensions\":{\"lengthMm\":300,\"widthMm\":200,\"heightMm\":100}},\"parcelType\":null,\"supplementaryData\":null,\"images\":null,\"timeoutMs\":{{inboundTimeoutMs}}}}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
