@@ -49,7 +49,7 @@ HISTORY_BACKEND_CASES = (
         barcode="100000000000000000000003",
         expected_status=3,
         expected_fields={
-            "originCode": "59544",
+            "originCode": "10001",
             "destinationCode": "11111",
         },
     ),
@@ -58,7 +58,7 @@ HISTORY_BACKEND_CASES = (
         barcode="100000000000000000000004",
         expected_status=4,
         expected_fields={
-            "originCode": "59544",
+            "originCode": "10001",
             "destinationCode": "22222",
         },
     ),

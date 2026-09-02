@@ -7,8 +7,8 @@ Configuration Sync مربوط به همگام‌سازی فهرست دستگاه
 ## پیش‌نیاز
 
 1. Snapshot را در مسیر
-   `Integrations:UpstreamApi:Mock:ConfigSnapshots:<SiteCode>` تنظیم کن.
-2. مقدار `SiteCode` و کلید Snapshot با مرکز تست، مثلاً `59544`،
+   `Integrations:UpstreamApi:Mock:DemoSnapshots:<SiteCode>` تنظیم کن.
+2. مقدار `SiteCode` و کلید Snapshot با مرکز تست، مثلاً `10001`،
    یکسان باشند.
 3. برای دستگاه‌ها `DeviceId`، `DeviceToken` و `ActivationStatus` را تنظیم کن.
 4. بعد از تغییر Mock، سرویس را Restart کن؛ Sync اولیه هنگام Startup انجام

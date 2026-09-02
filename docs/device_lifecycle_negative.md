@@ -26,10 +26,10 @@
 موفق برگردانده است:
 
 ```text
-PUT /api/devices/UNKNOWN-DEVICE-001/ip
+PUT /api/devices/unknown-demo-device/ip
 HTTP 200
 {
-  "deviceId": "UNKNOWN-DEVICE-001",
+  "deviceId": "unknown-demo-device",
   "ipAddress": "0.0.0.0"
 }
 ```

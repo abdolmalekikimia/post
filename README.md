@@ -1,75 +1,141 @@
 # Integration Automation Portfolio
 
-This repository is a portfolio-safe example of Python integration testing for
-device-oriented services. It demonstrates REST and SignalR clients, reusable
-service wrappers, response assertions, positive and negative flows, stress
-scenarios, and structured execution reports.
+This repository is a sanitized portfolio representation of a Python QA/SDET
+integration-testing project for device-oriented services. It demonstrates
+REST and SignalR/WebSocket clients, reusable service wrappers, layered flows,
+response-contract assertions, positive and negative scenarios, stress helpers,
+and structured execution reports.
+
+It is not connected to a production system. End-to-end scenarios require a
+local mock or demo service configured with the example environment values.
 
 ## Important privacy note
 
-This repository is intentionally sanitized for public portfolio use.
+This public version was prepared specifically for portfolio use:
 
-- Internal ticket and issue identifiers were replaced with descriptive names
-  such as `history_backend`, `delivery_merge`, and `destination_update`.
-- Internal service names, business terminology, document references, and
-  environment-specific wording were replaced with neutral industry language.
-- Internal hostnames, IP addresses, URLs, credentials, device identifiers, and
-  tokens were replaced with safe placeholders such as
+- Internal company names, ticket/issue identifiers, service names, document
+  references, and business-specific wording were replaced with neutral
+  terminology.
+- Real hostnames, IP addresses, URLs, credentials, tokens, device identifiers,
+  and environment-specific values were replaced with safe placeholders such as
   `api.example.invalid`, `0.0.0.0`, `demo-device`, and `demo-token`.
-- Endpoint and message names were generalized while preserving the client,
-  flow, assertion, and reporting architecture.
-- The original organized layout was kept so the repository demonstrates the
-  engineering approach without exposing company-specific implementation
-  details.
+- Scenario and flow names were made descriptive without relying on internal
+  tracking numbers.
+- The existing project layout and testing architecture were preserved so the
+  engineering approach remains visible without exposing private systems.
 
-The examples are not connected to a real service. Configure a local mock or
-demo server before running end-to-end scenarios.
+Before publishing any future change, review both the working tree and Git
+history for newly introduced secrets or organization-specific identifiers.
+
+## Architecture
+
+```text
+Test
+  ↓
+Flow
+  ↓
+Service
+  ↓
+Client
+  ↓
+REST / SignalR-WebSocket
+  ↓
+Response
+  ↓
+Assertion
+  ↓
+Execution Report
+```
+
+- **Test** selects a scenario and controls its environment.
+- **Flow** orchestrates a business-neutral sequence of operations.
+- **Service** exposes reusable domain-facing operations.
+- **Client** owns REST or SignalR/WebSocket transport details.
+- **Response** captures status, payload, and protocol results.
+- **Assertion** validates response contracts and expected outcomes.
+- **Execution Report** records steps, payloads, responses, expectations, and
+  errors with sensitive values redacted by default.
 
 ## Project layout
 
 ```text
-config/       environment-backed settings
-clients/      REST and SignalR transport clients
+config/       environment-backed settings and mock-service examples
+clients/      REST and SignalR/WebSocket transport clients
 services/     reusable service wrappers
-flows/        lifecycle, synchronization, upload, routing, and container flows
+flows/        lifecycle, synchronization, routing, upload, and container flows
 assertions/   response-contract assertions
 tests/unit/   isolated unit tests
 tests/success/positive integration flows
 tests/negative/negative scenario flows
 tests/stress/ volume and concurrency scenarios
-docs/         public-facing scenario notes
+docs/         public-facing scenario and configuration notes
+              (see `docs/scenarios/README.md` for the generic scenario catalog)
 postman/      generic Postman examples
-utils/        logging, test data, stress helpers, and reports
+utils/        logging, test data, stress helpers, and reporting
 ```
 
-## Setup
+## Configuration
+
+Install dependencies and create a local environment file:
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 Copy-Item config/test.env.example config/test.env
 ```
 
-Set `BASE_URL` and `WS_URL` to a local mock or demo service. The checked-in
-examples use the reserved `example.invalid` domain and do not contain live
-credentials.
+Set `BASE_URL` and `WS_URL` in the ignored `config/test.env` to a local mock or
+demo service. `config/backend-mock.env.example` documents generic mock
+fixtures and contains no production connection details. Never commit a local
+`.env` file or real credentials.
 
-## Test groups
+## Test execution
 
-Unit tests run without a service:
+The default pytest configuration excludes stress tests and marks end-to-end
+tests as skipped unless explicitly enabled.
+
+Unit tests:
 
 ```powershell
 .venv\Scripts\python.exe -m pytest tests/unit -q
 ```
 
-Positive, negative, and stress flows are disabled by default. Enable only the
-flow you want to run with its corresponding environment flag, for example:
+Positive/integration scenarios:
 
 ```powershell
 $env:RUN_E2E="1"
 .venv\Scripts\python.exe -m pytest tests/success -q -s
 ```
 
-Stress scenarios support configurable iteration counts, delays, fail-fast
-behavior, and concurrent operations. Reports include step status, request
-payload, response, expectation, and error information; sensitive values are
-redacted by default.
+Negative scenarios:
+
+```powershell
+$env:RUN_E2E="1"
+.venv\Scripts\python.exe -m pytest tests/negative -q -s
+```
+
+Stress scenarios:
+
+```powershell
+$env:RUN_E2E="1"
+.venv\Scripts\python.exe -m pytest tests/stress -q -s -o addopts=""
+```
+
+The integration and stress commands assume that the corresponding local mock
+or demo service and fixtures are available. Scenario-specific environment
+flags are documented in `config/test.env.example` and the related files under
+`docs/`.
+
+## Reporting
+
+Execution helpers produce structured step information, including operation
+status, request payload, response, expectation, and error details. Reports
+are intended for local review and are ignored by Git along with logs, Allure
+output, coverage files, and other generated artifacts.
+
+## Public sanitization
+
+The repository intentionally preserves the shape of an organized automation
+codebase while removing identifying implementation details. Generic terms such
+as “REST client”, “SignalR/WebSocket client”, “gateway”, and “mock service” are
+used only to describe the testing techniques represented here; they do not
+claim access to any real production endpoint.

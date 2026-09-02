@@ -276,7 +276,7 @@ def run_device_lifecycle_negative_flow(
         # observes 200/upsert here. Re-validate after Gateway-Upstream integration
         # and change this expectation if the official contract is known-only.
         lambda: admin.update_device_ip(
-            "UNKNOWN-DEVICE-001",
+            "unknown-demo-device",
             run_settings.device_ip,
             admin_token,
         ),
@@ -284,7 +284,7 @@ def run_device_lifecycle_negative_flow(
         response_is_expected=lambda response: (
             _status_code(rest_client.last_exchange) == 200
             and isinstance(response, dict)
-            and response.get("deviceId") == "UNKNOWN-DEVICE-001"
+            and response.get("deviceId") == "unknown-demo-device"
             and response.get("ipAddress") == run_settings.device_ip
         ),
         expected="HTTP 200 with the requested deviceId and ipAddress",
@@ -318,7 +318,7 @@ def run_device_lifecycle_negative_flow(
     run_auth_case(
         "8. [Device Lifecycle] Auth - invalid deviceId",
         "invalid_device_id",
-        "UNKNOWN-DEVICE-001",
+        "unknown-demo-device",
         run_settings.device_token,
     )
     run_auth_case(

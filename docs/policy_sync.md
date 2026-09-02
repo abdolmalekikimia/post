@@ -12,7 +12,7 @@ Database یا لاگ سرویس را بررسی کند.
 
 قبل از هر Case:
 
-1. در Snapshot مسیر `Integrations:UpstreamApi:Mock:ConfigSnapshots:<SiteCode>`
+1. در Snapshot مسیر `Integrations:UpstreamApi:Mock:DemoSnapshots:<SiteCode>`
    مقدار `RoutingPolicy` را تغییر بده.
 2. `ConfigVersion` را افزایش بده.
 3. سرویس را Restart کن تا Sync هنگام Startup اجرا شود.

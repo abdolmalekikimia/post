@@ -39,7 +39,7 @@ $env:HISTORY_BACKEND_READY="0"
 ```
 
 پس از افزودن HistoryFixtureهای لازم در Mock، اعمال mapping مقصد مرجوعی
-`59544 -> 22222` و ثبت مقادیر مرجع فیزیکی برای barcode discrepancy:
+`10001 -> 22222` و ثبت مقادیر مرجع فیزیکی برای barcode discrepancy:
 
 ```powershell
 $env:RUN_E2E="1"

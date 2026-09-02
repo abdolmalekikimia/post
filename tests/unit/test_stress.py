@@ -70,7 +70,7 @@ def test_stress_classifies_requests_transport_errors():
 
 
 def test_fixture_dependent_stress_cases_are_opt_in():
-    edge_only = Settings(
+    gateway_only = Settings(
         history_backend_stress_fixtures_ready=False,
         delivery_merge_stress_fixtures_ready=False,
     )
@@ -80,10 +80,10 @@ def test_fixture_dependent_stress_cases_are_opt_in():
     )
 
     assert "upstream_rejected" not in {
-        case.name for case in build_history_backend_stress_cases(edge_only)
+        case.name for case in build_history_backend_stress_cases(gateway_only)
     }
     assert "delivery_rejected" not in {
-        case.name for case in build_delivery_merge_stress_cases(edge_only)
+        case.name for case in build_delivery_merge_stress_cases(gateway_only)
     }
     assert "upstream_rejected" in {
         case.name for case in build_history_backend_stress_cases(configured)

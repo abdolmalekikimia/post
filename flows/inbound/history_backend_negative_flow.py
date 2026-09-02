@@ -44,7 +44,7 @@ HISTORY_BACKEND_NEGATIVE_CASES = (
         name="upstream_rejected_with_destination",
         barcode="100000000000000000000004",
         expected_status=4,
-        expected_fields={"originCode": "59544", "destinationCode": "22222"},
+        expected_fields={"originCode": "10001", "destinationCode": "22222"},
     ),
     HistoryBackendCase(
         name="upstream_rejected_without_destination",

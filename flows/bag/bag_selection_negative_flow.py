@@ -60,13 +60,13 @@ class _BagSelectionBarcodeGenerator:
 def build_bag_selection_negative_cases(
     run_settings: Settings = settings,
 ) -> tuple[BagSelectionCase, ...]:
-    """Return Bag Selection task-oriented edge/negative cases.
+    """Return Bag Selection task-oriented gateway/negative cases.
 
     TC-01..TC-07 are selection success cases from the source document and are
     intentionally excluded because task-specific positive tests do not belong
     to the Success suite.
     """
-    destination = run_settings.bag_selection_destination_code
+    destination = run_settings.container_selection_destination_code
     return (
         BagSelectionCase(
             "TC-08",
@@ -209,7 +209,7 @@ def _prepare_parcels(
         chute = (
             case.setup_chutes[index % len(case.setup_chutes)]
             if case.setup_chutes
-            else run_settings.bag_selection_default_chute
+            else run_settings.container_selection_default_chute
         )
 
         register_name = (
@@ -268,7 +268,7 @@ def _run_single_bag_case(
 ) -> dict[str, Any]:
     payload = dict(case.bag_payload or {})
     payload.pop("_omit_destination", None)
-    destination = payload.pop("destinationCenterCode", run_settings.bag_selection_destination_code)
+    destination = payload.pop("destinationCenterCode", run_settings.container_selection_destination_code)
     if case.case_id == "TC-08" and cursor_barcode:
         payload["lastBarcode"] = cursor_barcode
     return _assert_bag_result(
@@ -278,7 +278,7 @@ def _run_single_bag_case(
                 else destination
             ),
             seal_number=f"SEAL-{case.case_id}",
-            transport_type=run_settings.bag_selection_transport_type,
+            transport_type=run_settings.container_selection_transport_type,
             chute_ids=payload.get("chuteIds"),
             count=payload.get("count"),
             last_barcode=payload.get("lastBarcode"),
@@ -296,7 +296,7 @@ def _run_concurrent_case(
     destinations = (
         case.setup_destinations
         if case.setup_destinations
-        else (run_settings.bag_selection_destination_code,) * 2
+        else (run_settings.container_selection_destination_code,) * 2
     )
 
     def worker(worker_index: int) -> dict[str, Any]:
@@ -317,7 +317,7 @@ def _run_concurrent_case(
                     worker_index % len(destinations)
                 ],
                 seal_number=f"SEAL-{case.case_id}-{worker_index}",
-                transport_type=run_settings.bag_selection_transport_type,
+                transport_type=run_settings.container_selection_transport_type,
             )
         finally:
             ws.close()
@@ -344,7 +344,7 @@ def run_bag_selection_negative_flow(
         if cases is not None
         else build_bag_selection_negative_cases(run_settings)
     )
-    selected = run_settings.bag_selection_case.strip().lower()
+    selected = run_settings.container_selection_case.strip().lower()
     if selected != "all":
         active_cases = tuple(
             case
@@ -425,7 +425,7 @@ def run_bag_selection_negative_flow(
             time.sleep(run_settings.api_delay_seconds)
         device = DeviceService(ws)
         barcode_generator = _BagSelectionBarcodeGenerator(
-            run_settings.bag_selection_barcode_prefix
+            run_settings.container_selection_barcode_prefix
         )
         run_step(
             report,
