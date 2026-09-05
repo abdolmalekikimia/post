@@ -1,56 +1,46 @@
 # Integration Automation Portfolio
 
-This repository is a sanitized portfolio representation of a Python QA/SDET
-integration-testing project for device-oriented services. It demonstrates
-REST and SignalR/WebSocket clients, reusable service wrappers, layered flows,
-response-contract assertions, positive and negative scenarios, stress helpers,
-and structured execution reports.
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![Pytest](https://img.shields.io/badge/Tested%20with-pytest-0A9EDC)
+![CI](https://github.com/abdolmalekikimia/post/actions/workflows/qa.yml/badge.svg)
 
-It is not connected to a production system. End-to-end scenarios require a
-local mock or demo service configured with the example environment values.
+A sanitized QA/SDET portfolio project that demonstrates layered integration
+testing for device-oriented services. The implementation includes REST and
+SignalR/WebSocket clients, reusable service wrappers, positive and negative
+flows, response-contract assertions, stress scenarios, and structured reports.
 
-## Important privacy note
+This repository is a portfolio representation. It is not connected to a
+production system. End-to-end tests require a compatible local mock or demo
+service and are skipped unless explicitly enabled.
 
-This public version was prepared specifically for portfolio use:
+## What this project demonstrates
 
-- Internal company names, ticket/issue identifiers, service names, document
-  references, and business-specific wording were replaced with neutral
-  terminology.
-- Real hostnames, IP addresses, URLs, credentials, tokens, device identifiers,
-  and environment-specific values were replaced with safe placeholders such as
-  `api.example.invalid`, `0.0.0.0`, `demo-device`, and `demo-token`.
-- Scenario and flow names were made descriptive without relying on internal
-  tracking numbers.
-- The existing project layout and testing architecture were preserved so the
-  engineering approach remains visible without exposing private systems.
-
-Before publishing any future change, review both the working tree and Git
-history for newly introduced secrets or organization-specific identifiers.
+- Python test automation with Pytest
+- REST API request and response validation
+- SignalR/WebSocket connection, handshake, and message testing
+- Layered Test → Flow → Service → Client architecture
+- Positive, negative, contract, retry, timeout, and race-condition scenarios
+- Environment-driven configuration with safe example values
+- Step-level execution reporting and response redaction
+- Scenario coverage metadata and a repeatable execution matrix
 
 ## Architecture
 
-```text
-Test
-  ↓
-Flow
-  ↓
-Service
-  ↓
-Client
-  ↓
-REST / SignalR-WebSocket
-  ↓
-Response
-  ↓
-Assertion
-  ↓
-Execution Report
+```mermaid
+flowchart TD
+    A[Test] --> B[Flow]
+    B --> C[Service]
+    C --> D[Client]
+    D --> E[REST / SignalR-WebSocket]
+    E --> F[Response]
+    F --> G[Assertion]
+    G --> H[Execution Report]
 ```
 
 - **Test** selects a scenario and controls its environment.
-- **Flow** orchestrates a business-neutral sequence of operations.
-- **Service** exposes reusable domain-facing operations.
-- **Client** owns REST or SignalR/WebSocket transport details.
+- **Flow** orchestrates a reusable, business-neutral sequence.
+- **Service** exposes operations without leaking transport details.
+- **Client** owns REST or SignalR/WebSocket communication.
 - **Response** captures status, payload, and protocol results.
 - **Assertion** validates response contracts and expected outcomes.
 - **Execution Report** records steps, payloads, responses, expectations, and
@@ -59,7 +49,7 @@ Execution Report
 ## Project layout
 
 ```text
-config/       environment-backed settings and mock-service examples
+config/       environment settings and mock-service examples
 clients/      REST and SignalR/WebSocket transport clients
 services/     reusable service wrappers
 flows/        lifecycle, synchronization, routing, upload, and container flows
@@ -67,16 +57,28 @@ assertions/   response-contract assertions
 tests/unit/   isolated unit tests
 tests/success/positive integration flows
 tests/negative/negative scenario flows
-tests/stress/ volume and concurrency scenarios
-docs/         public-facing scenario and configuration notes
-              (see `docs/scenarios/README.md` for the generic scenario catalog)
+tests/stress/ volume, concurrency, and race scenarios
+scripts/      local scenario-matrix runner
+docs/         architecture, coverage, configuration, and scenario notes
 postman/      generic Postman examples
 utils/        logging, test data, stress helpers, and reporting
 ```
 
-## Configuration
+The generic coverage catalog is available in
+[`config/scenario_catalog.py`](config/scenario_catalog.py), with the human
+readable matrix in [`docs/SCENARIO_COVERAGE_MATRIX.md`](docs/SCENARIO_COVERAGE_MATRIX.md).
 
-Install dependencies and create a local environment file:
+## Test categories
+
+| Category | Purpose | Default behavior |
+|---|---|---|
+| Unit | Client, service, assertion, settings, and utility checks | Runs locally |
+| Positive | Healthy integration and success contracts | Requires `RUN_E2E=1` |
+| Negative | Invalid input and expected rejection behavior | Requires `RUN_E2E=1` |
+| Contract | Shared response shape, counters, errors, and identity rules | Depends on suite |
+| Stress | Volume, retry, concurrency, and race behavior | Excluded by default |
+
+## Configuration
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements.txt
@@ -84,19 +86,22 @@ Copy-Item config/test.env.example config/test.env
 ```
 
 Set `BASE_URL` and `WS_URL` in the ignored `config/test.env` to a local mock or
-demo service. `config/backend-mock.env.example` documents generic mock
-fixtures and contains no production connection details. Never commit a local
-`.env` file or real credentials.
+demo service. The checked-in examples use reserved placeholder values such as
+`api.example.invalid`, `demo-device`, and `demo-token`. Never commit real
+credentials, tokens, internal URLs, or environment-specific files.
 
 ## Test execution
-
-The default pytest configuration excludes stress tests and marks end-to-end
-tests as skipped unless explicitly enabled.
 
 Unit tests:
 
 ```powershell
 .venv\Scripts\python.exe -m pytest tests/unit -q
+```
+
+Default safe suite:
+
+```powershell
+.venv\Scripts\python.exe -m pytest -q
 ```
 
 Positive/integration scenarios:
@@ -113,29 +118,64 @@ $env:RUN_E2E="1"
 .venv\Scripts\python.exe -m pytest tests/negative -q -s
 ```
 
-Stress scenarios:
+Stress scenarios are intentionally excluded from the default run. If a local
+fixture is ready, collect or run them explicitly:
 
 ```powershell
 $env:RUN_E2E="1"
 .venv\Scripts\python.exe -m pytest tests/stress -q -s -o addopts=""
 ```
 
-The integration and stress commands assume that the corresponding local mock
-or demo service and fixtures are available. Scenario-specific environment
-flags are documented in `config/test.env.example` and the related files under
-`docs/`.
+The local scenario matrix runner can list its planned entries without making
+network calls:
+
+```powershell
+.venv\Scripts\python.exe -m scripts.run_scenarios --list
+```
+
+Running the matrix without `--list` requires the configured local mock/demo
+service and the relevant fixtures.
 
 ## Reporting
 
-Execution helpers produce structured step information, including operation
-status, request payload, response, expectation, and error details. Reports
-are intended for local review and are ignored by Git along with logs, Allure
-output, coverage files, and other generated artifacts.
+Execution helpers capture step status, request payload, response, expected
+result, errors, and execution state after a prerequisite fails. Generated
+logs, reports, coverage files, and Allure output are ignored by Git. A
+representative report format is shown in
+[`docs/sample-test-report.md`](docs/sample-test-report.md).
+
+## CI/CD
+
+GitHub Actions runs the unit suite, the default safe Pytest suite, and a
+repository-level secret-pattern check. End-to-end and stress scenarios are not
+run in CI because this public repository does not provide a production or
+shared test environment.
 
 ## Public sanitization
 
-The repository intentionally preserves the shape of an organized automation
-codebase while removing identifying implementation details. Generic terms such
-as “REST client”, “SignalR/WebSocket client”, “gateway”, and “mock service” are
-used only to describe the testing techniques represented here; they do not
-claim access to any real production endpoint.
+This repository intentionally preserves the shape of an organized automation
+codebase while removing identifying implementation details:
+
+- Company names, internal ticket identifiers, service names, and document
+  references were replaced with neutral terminology.
+- Real hosts, URLs, IP addresses, credentials, tokens, and device identifiers
+  were replaced with safe placeholders.
+- Existing flow and test structure was preserved so the engineering approach
+  remains visible without exposing private systems.
+
+See [`SECURITY.md`](SECURITY.md) for the public-repository security boundary.
+
+## Limitations
+
+- End-to-end tests require a compatible local mock or demo service.
+- Some scenarios require externally prepared fixtures or log/database evidence.
+- Stress tests are policy-disabled by default until their fixtures are ready.
+- This repository does not claim access to, or validation against, any real
+  production endpoint.
+
+## Portfolio summary
+
+This project is intended to demonstrate practical QA/SDET engineering:
+separating transport from business flows, keeping assertions explicit,
+controlling test data through configuration, and making execution results
+reviewable at step level.

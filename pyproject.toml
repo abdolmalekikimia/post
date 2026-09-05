@@ -1,7 +1,7 @@
 [project]
 name = "integration-automation-portfolio"
 version = "0.1.0"
-description = "Python tests for sorting device and delivery system integration"
+description = "Sanitized Python QA/SDET portfolio for REST and SignalR integration testing"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]

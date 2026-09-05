@@ -3,6 +3,7 @@ import os
 import pytest
 
 from flows.success.task_success_flows import (
+    run_device_lifecycle_success_flow,
     run_configuration_sync_success_flow,
     run_history_backend_success_flow,
     run_destination_lookup_success_flow,
@@ -15,6 +16,20 @@ from flows.success.task_success_flows import (
 def _require_e2e() -> None:
     if os.getenv("RUN_E2E", "0") != "1":
         pytest.skip("Set RUN_E2E=1 to run against the local local demo service")
+
+
+@pytest.mark.e2e
+@pytest.mark.success
+@pytest.mark.device_lifecycle_success
+@pytest.mark.websocket
+@pytest.mark.mixed
+def test_device_lifecycle_success():
+    _require_e2e()
+    result = run_device_lifecycle_success_flow()
+    assert result.admin_token
+    assert result.update_ip_response
+    assert result.connection_response
+    assert result.auth_response
 
 
 @pytest.mark.e2e
@@ -72,4 +87,3 @@ def test_destination_update_positive_destination_update_cases():
     _require_e2e()
     result = run_destination_update_success_flow()
     assert set(result.responses) == {"TC-01", "TC-02", "TC-03", "TC-04"}
-

@@ -6,6 +6,9 @@ from typing import Any
 from assertions.bag_assertions import assert_bag_result_contract
 from assertions.lazy_upload_assertions import assert_lazy_upload_stage_response
 from assertions.pending_assertions import assert_destination_lookup_success
+from assertions.signalr_assertions import assert_success_response, response_field
+from clients.rest_client import RestClient
+from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
 from flows.bag.container_flow_support import (
     PRECONDITION_STEPS,
@@ -37,6 +40,8 @@ from flows.inbound.destination_lookup_flow import (
     DestinationLookupResult,
     build_destination_lookup_cases,
 )
+from services.admin_service import AdminService
+from services.device_service import DeviceService
 from utils.step_report import ExecutionReport, exchange_detail, run_step
 
 
@@ -52,6 +57,99 @@ class BagSuccessResult:
     assign_response: dict[str, Any]
     close_response: dict[str, Any]
     report: ExecutionReport
+
+
+@dataclass
+class DeviceLifecycleSuccessResult:
+    admin_token: str
+    update_ip_response: dict[str, Any]
+    connection_response: dict[str, Any]
+    auth_response: dict[str, Any]
+    report: ExecutionReport
+
+
+def run_device_lifecycle_success_flow(
+    run_settings: Settings = settings,
+) -> DeviceLifecycleSuccessResult:
+    """Run the healthy device lifecycle contract using generic names."""
+    report = ExecutionReport("Device Lifecycle success flow")
+    report.register(
+        "1. [DEVICE] Admin Login - POST /api/admin/login",
+        "2. [DEVICE] Update Device IP - PUT /api/devices/{deviceId}/ip",
+        "3. [DEVICE] SignalR Connect/Handshake - /hubs/device",
+        "4. [DEVICE] Device Auth Invocation - Auth",
+    )
+
+    rest_client = RestClient(run_settings.base_url, run_settings.timeout_seconds)
+    try:
+        admin = AdminService(rest_client)
+        admin_token = run_step(
+            report,
+            "1. [DEVICE] Admin Login - POST /api/admin/login",
+            lambda: admin.login(run_settings.admin_username, run_settings.admin_password),
+            detail=lambda _: exchange_detail(rest_client.last_exchange),
+            error_detail=lambda _: exchange_detail(rest_client.last_exchange),
+            success_message="ورود معتبر ادمین موفق شد.",
+        )
+        update_ip_response = run_step(
+            report,
+            "2. [DEVICE] Update Device IP - PUT /api/devices/{deviceId}/ip",
+            lambda: admin.update_device_ip(
+                run_settings.device_id, run_settings.device_ip, admin_token
+            ),
+            detail=lambda _: exchange_detail(rest_client.last_exchange),
+            error_detail=lambda _: exchange_detail(rest_client.last_exchange),
+            success_message="ثبت IP معتبر دستگاه موفق شد.",
+        )
+    finally:
+        rest_client.close()
+
+    ws = DeviceWebSocketClient(run_settings.ws_url, run_settings.timeout_seconds)
+    try:
+        connection_response = run_step(
+            report,
+            "3. [DEVICE] SignalR Connect/Handshake - /hubs/device",
+            ws.connect,
+            detail=lambda _: exchange_detail(ws.last_exchange),
+            error_detail=lambda error: {
+                "error": f"{type(error).__name__}: {error}",
+                "lastExchange": exchange_detail(ws.last_exchange),
+            },
+            success_message="اتصال و handshake موفق شد.",
+        )
+        device = DeviceService(ws)
+
+        def authenticate() -> dict[str, Any]:
+            response = device.auth(run_settings.device_id, run_settings.device_token)
+            assert_success_response(response, "Device Auth")
+            if not response_field(response, "sessionId"):
+                raise AssertionError(
+                    f"Device Auth succeeded but has no sessionId: {response}"
+                )
+            return response
+
+        auth_response = run_step(
+            report,
+            "4. [DEVICE] Device Auth Invocation - Auth",
+            authenticate,
+            detail=lambda _: exchange_detail(ws.last_exchange),
+            error_detail=lambda error: {
+                "error": f"{type(error).__name__}: {error}",
+                **exchange_detail(ws.last_exchange),
+            },
+            success_message="احراز هویت معتبر دستگاه موفق شد.",
+        )
+    finally:
+        ws.close()
+
+    report.print()
+    return DeviceLifecycleSuccessResult(
+        admin_token=admin_token,
+        update_ip_response=update_ip_response,
+        connection_response=connection_response,
+        auth_response=auth_response,
+        report=report,
+    )
 
 
 def run_configuration_sync_success_flow(
