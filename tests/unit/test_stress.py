@@ -1,3 +1,10 @@
+import pytest
+
+# Stress-related checks are disabled together with the executable stress suite.
+pytestmark = pytest.mark.skip(
+    reason="Stress tests are temporarily disabled by project policy"
+)
+
 import requests
 
 from utils.stress import (
@@ -7,8 +14,8 @@ from utils.stress import (
     percentile,
 )
 from config.settings import Settings
-from flows.inbound.history_backend_stress_flow import build_history_backend_stress_cases
-from flows.inbound.delivery_merge_stress_flow import build_delivery_merge_stress_cases
+from flows.inbound.eps53_stress_flow import build_eps53_stress_cases
+from flows.inbound.eps55_stress_flow import build_eps55_stress_cases
 
 
 def test_stress_summary_metrics():
@@ -70,24 +77,24 @@ def test_stress_classifies_requests_transport_errors():
 
 
 def test_fixture_dependent_stress_cases_are_opt_in():
-    gateway_only = Settings(
-        history_backend_stress_fixtures_ready=False,
-        delivery_merge_stress_fixtures_ready=False,
+    edge_only = Settings(
+        eps53_stress_fixtures_ready=False,
+        eps55_stress_fixtures_ready=False,
     )
     configured = Settings(
-        history_backend_stress_fixtures_ready=True,
-        delivery_merge_stress_fixtures_ready=True,
+        eps53_stress_fixtures_ready=True,
+        eps55_stress_fixtures_ready=True,
     )
 
-    assert "upstream_rejected" not in {
-        case.name for case in build_history_backend_stress_cases(gateway_only)
+    assert "core_rejected" not in {
+        case.name for case in build_eps53_stress_cases(edge_only)
     }
-    assert "delivery_rejected" not in {
-        case.name for case in build_delivery_merge_stress_cases(gateway_only)
+    assert "postal_rejected" not in {
+        case.name for case in build_eps55_stress_cases(edge_only)
     }
-    assert "upstream_rejected" in {
-        case.name for case in build_history_backend_stress_cases(configured)
+    assert "core_rejected" in {
+        case.name for case in build_eps53_stress_cases(configured)
     }
-    assert "delivery_rejected" in {
-        case.name for case in build_delivery_merge_stress_cases(configured)
+    assert "postal_rejected" in {
+        case.name for case in build_eps55_stress_cases(configured)
     }

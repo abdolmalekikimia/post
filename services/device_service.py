@@ -86,7 +86,7 @@ class DeviceService:
             }
 
         envelope = self._envelope(
-            "item.register",
+            "inbound.register",
             {
                 "barcodes": barcodes,
                 "readTimestamp": read_timestamp
@@ -99,7 +99,7 @@ class DeviceService:
             },
         )
         return self.client.invoke(
-            TARGET_BY_MESSAGE_TYPE["item.register"],
+            TARGET_BY_MESSAGE_TYPE["inbound.register"],
             [envelope],
             invocation_id=envelope["correlationId"],
         )
@@ -116,7 +116,7 @@ class DeviceService:
             "chuteId": chute_id,
         }
         envelope = self._envelope(
-            "route.assign",
+            "destination.assign",
             {
                 key: value
                 for key, value in optional_values.items()
@@ -124,7 +124,7 @@ class DeviceService:
             },
         )
         return self.client.invoke(
-            TARGET_BY_MESSAGE_TYPE["route.assign"],
+            TARGET_BY_MESSAGE_TYPE["destination.assign"],
             [envelope],
             invocation_id=envelope["correlationId"],
         )
@@ -132,18 +132,19 @@ class DeviceService:
     def close_bag(
         self,
         destination_center_code: str | None = None,
-        seal_number: str = DEFAULT_SEAL_NUMBER,
-        transport_type: str = DEFAULT_TRANSPORT_TYPE,
+        seal_number: str | None = DEFAULT_SEAL_NUMBER,
+        transport_type: str | None = DEFAULT_TRANSPORT_TYPE,
         chute_ids: list[str] | None = None,
         count: int | None = None,
         last_barcode: str | None = None,
         parcel_types: list[str] | None = None,
         service_types: list[int] | None = None,
     ) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "sealNumber": seal_number,
-            "transportType": transport_type,
-        }
+        payload: dict[str, Any] = {}
+        if seal_number is not None:
+            payload["sealNumber"] = seal_number
+        if transport_type is not None:
+            payload["transportType"] = transport_type
         optional_values = {
             "destinationCenterCode": destination_center_code,
             "chuteIds": chute_ids,
@@ -159,9 +160,9 @@ class DeviceService:
                 if value is not None
             }
         )
-        envelope = self._envelope("container.close", payload)
+        envelope = self._envelope("bag.close", payload)
         return self.client.invoke(
-            TARGET_BY_MESSAGE_TYPE["container.close"],
+            TARGET_BY_MESSAGE_TYPE["bag.close"],
             [envelope],
             invocation_id=envelope["correlationId"],
         )

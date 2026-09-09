@@ -6,11 +6,15 @@ from flows.packing.packing_flows import (
     packing_negative_settings,
     run_packing_negative_flow,
 )
+from flows.bag.eps76_negative_flow import build_eps76_negative_cases
+from flows.bag.eps79_negative_flow import EPS79_NEGATIVE_CASES
+from flows.bag.eps87_response_flow import EPS87_CASES
+from flows.bag.eps89_audit_flow import EPS89_CASES
 
 
 def _require_packing_e2e() -> None:
     if os.getenv("RUN_E2E", "0") != "1":
-        pytest.skip("Set RUN_E2E=1 to run against the local local demo service")
+        pytest.skip("Set RUN_E2E=1 to run against the local EPS service")
     if os.getenv("RUN_PACKING_NEGATIVE", "0") != "1":
         pytest.skip("Set RUN_PACKING_NEGATIVE=1 to run packing negative tests")
 
@@ -19,57 +23,57 @@ def _require_packing_e2e() -> None:
 @pytest.mark.negative
 @pytest.mark.packing
 @pytest.mark.packing_negative
-@pytest.mark.container_selection_negative
-def test_packing_container_selection_negative_contract():
+@pytest.mark.contract
+@pytest.mark.eps76_negative
+def test_packing_eps76_negative_contract():
     _require_packing_e2e()
-    case = os.getenv("PACKING_CONTAINER_SELECTION_CASE", "TC-10")
-    result = run_packing_negative_flow(
-        "Container Selection",
-        packing_negative_settings("Container Selection", case),
-    )
-    assert set(result.responses) == {case}
+    selected = os.getenv("PACKING_EPS76_CASE", "all")
+    cases = [selected] if selected.lower() != "all" else [case.case_id for case in build_eps76_negative_cases()]
+    for case in cases:
+        result = run_packing_negative_flow("EPS-76", packing_negative_settings("EPS-76", case))
+        assert set(result.responses) == {case}
 
 
 @pytest.mark.e2e
 @pytest.mark.negative
 @pytest.mark.packing
 @pytest.mark.packing_negative
-@pytest.mark.export_before_container_negative
-def test_packing_export_before_container_negative_contract():
+@pytest.mark.contract
+@pytest.mark.eps79_negative
+def test_packing_eps79_negative_contract():
     _require_packing_e2e()
-    case = os.getenv("PACKING_EXPORT_BEFORE_CONTAINER_CASE", "TC-16")
-    result = run_packing_negative_flow(
-        "Export Before Container",
-        packing_negative_settings("Export Before Container", case),
-    )
-    assert set(result.responses) == {case}
+    selected = os.getenv("PACKING_EPS79_CASE", "all")
+    cases = [selected] if selected.lower() != "all" else [case.case_id for case in EPS79_NEGATIVE_CASES]
+    for case in cases:
+        result = run_packing_negative_flow("EPS-79", packing_negative_settings("EPS-79", case))
+        assert set(result.responses) == {case}
 
 
 @pytest.mark.e2e
 @pytest.mark.negative
 @pytest.mark.packing
 @pytest.mark.packing_negative
-@pytest.mark.container_response_response
-def test_packing_container_response_negative_contract():
+@pytest.mark.contract
+@pytest.mark.eps87_response
+def test_packing_eps87_negative_contract():
     _require_packing_e2e()
-    case = os.getenv("PACKING_CONTAINER_RESPONSE_CASE", "TC-06")
-    result = run_packing_negative_flow(
-        "Container Response",
-        packing_negative_settings("Container Response", case),
-    )
-    assert set(result.responses) == {case}
+    selected = os.getenv("PACKING_EPS87_CASE", "all")
+    cases = [selected] if selected.lower() != "all" else [case.case_id for case in EPS87_CASES]
+    for case in cases:
+        result = run_packing_negative_flow("EPS-87", packing_negative_settings("EPS-87", case))
+        assert set(result.responses) == {case}
 
 
 @pytest.mark.e2e
 @pytest.mark.negative
 @pytest.mark.packing
 @pytest.mark.packing_negative
-@pytest.mark.physical_container_audit_negative
-def test_packing_physical_container_audit_negative_contract():
+@pytest.mark.contract
+@pytest.mark.eps89_negative
+def test_packing_eps89_negative_contract():
     _require_packing_e2e()
-    case = os.getenv("PACKING_PHYSICAL_CONTAINER_AUDIT_CASE", "TC-04")
-    result = run_packing_negative_flow(
-        "Physical Container Audit",
-        packing_negative_settings("Physical Container Audit", case),
-    )
-    assert set(result.responses) == {case}
+    selected = os.getenv("PACKING_EPS89_CASE", "all")
+    cases = [selected] if selected.lower() != "all" else [case.case_id for case in EPS89_CASES]
+    for case in cases:
+        result = run_packing_negative_flow("EPS-89", packing_negative_settings("EPS-89", case))
+        assert set(result.responses) == {case}

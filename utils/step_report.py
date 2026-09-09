@@ -135,7 +135,12 @@ class ExecutionReport:
                     "    responseReceived: "
                     f"{format_detail(record.response_received)}"
                 )
-            if record.error:
+            elif record.error and record.payload_sent is not None:
+                lines.append(
+                    "    responseReceived: "
+                    f"{format_detail({'error': record.error})}"
+                )
+            elif record.error:
                 lines.append(f"    error: {record.error}")
             lines.append(f"    expected: {record.expectation}")
 
@@ -149,7 +154,16 @@ class ExecutionReport:
         return "\n".join(lines)
 
     def print(self) -> None:
-        print(self.render())
+        rendered = self.render()
+        try:
+            print(rendered)
+        except UnicodeEncodeError:
+            import sys
+            if hasattr(sys.stdout, "buffer"):
+                sys.stdout.buffer.write((rendered + "\n").encode("utf-8", errors="replace"))
+                sys.stdout.flush()
+            else:
+                print(rendered.encode("ascii", errors="replace").decode("ascii"))
 
 
 class FlowExecutionError(AssertionError):
@@ -177,9 +191,12 @@ ErrorDetail = Callable[[Exception], object]
 
 def exchange_detail(exchange: dict[str, object]) -> dict[str, object]:
     """Return the request/response pair shown for one API or WebSocket step."""
+    response = exchange.get("result", exchange.get("response"))
+    if response is None and "error" in exchange:
+        response = {"error": exchange["error"]}
     return {
         "payloadSent": exchange.get("request"),
-        "responseReceived": exchange.get("result", exchange.get("response")),
+        "responseReceived": response,
     }
 
 
@@ -232,6 +249,7 @@ def run_step(
     detail: Detail | None = None,
     success_message: str = "",
     error_detail: ErrorDetail | None = None,
+    mark_remaining_on_error: bool = True,
 ) -> T:
     started_at = time.monotonic()
     try:
@@ -248,8 +266,8 @@ def run_step(
             f"{type(exc).__name__}: {exc}",
             detail=detail_value,
         )
-        report.mark_remaining_not_executed()
-        report.print()
+        if mark_remaining_on_error:
+            report.mark_remaining_not_executed()
         raise FlowExecutionError(
             report.flow_name,
             step_name,

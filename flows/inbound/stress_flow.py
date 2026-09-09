@@ -198,16 +198,21 @@ def run_inbound_stress_flow(
         run_settings.timeout_seconds,
     )
     admin = AdminService(rest_client)
-    admin_token = admin.login(
-        run_settings.admin_username,
-        run_settings.admin_password,
-    )
-    time.sleep(run_settings.stress_delay_seconds)
-    admin.update_device_ip(
-        run_settings.device_id,
-        run_settings.device_ip,
-        admin_token,
-    )
+    try:
+        admin_token = admin.login(
+            run_settings.admin_username,
+            run_settings.admin_password,
+        )
+        time.sleep(run_settings.stress_delay_seconds)
+        admin.update_device_ip(
+            run_settings.device_id,
+            run_settings.device_ip,
+            admin_token,
+        )
+    except Exception:
+        rest_client.close()
+        raise
+    rest_client.close()
     time.sleep(run_settings.stress_delay_seconds)
 
     warmup_client = DeviceWebSocketClient(
@@ -234,7 +239,7 @@ def run_inbound_stress_flow(
             cases[0].expected_error_contains,
         )
         if not valid:
-            raise AssertionError(f"Warm-up RegisterItem failed: {error}")
+            raise AssertionError(f"Warm-up RegisterInbound failed: {error}")
     finally:
         warmup_client.close()
 

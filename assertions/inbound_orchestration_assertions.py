@@ -4,7 +4,7 @@ from typing import Any
 from assertions.signalr_assertions import response_field, response_payload
 
 
-def assert_delivery_merge_response(
+def assert_eps55_response(
     response: dict[str, Any],
     expected_status: int,
     operation: str,

@@ -1,19 +1,19 @@
 from typing import Any
 from urllib.parse import quote
 
-from clients.rest_client import RestClient
+from clients.http_client import HttpClient
 
 
 class AdminService:
-    def __init__(self, client: RestClient) -> None:
+    def __init__(self, client: HttpClient) -> None:
         self.client = client
 
     def login(self, username: str, password: str) -> str:
         response = self.client.post(
-            "/api/admin/login",
+            "/admin/login",
             {"username": username, "password": password},
         )
-        self._raise_for_status(response, "POST /api/admin/login")
+        self._raise_for_status(response, "POST /admin/login")
         try:
             body = response.json()
         except ValueError as exc:
@@ -37,13 +37,13 @@ class AdminService:
     ) -> dict[str, Any]:
         encoded_device_id = quote(str(device_id), safe="")
         response = self.client.put(
-            f"/api/devices/{encoded_device_id}/ip",
+            f"/admin/devices/{encoded_device_id}/ip",
             {"ipAddress": ip_address},
             token,
         )
         self._raise_for_status(
             response,
-            f"PUT /api/devices/{encoded_device_id}/ip",
+            f"PUT /admin/devices/{encoded_device_id}/ip",
         )
         try:
             body = response.json()

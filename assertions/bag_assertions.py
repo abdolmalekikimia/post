@@ -150,7 +150,7 @@ def assert_error_items(
     expected_barcodes: set[str] | None = None,
     expected_categories: set[str] | None = None,
 ) -> None:
-    """Validate the error list and its new/deferred classification."""
+    """Validate the EPS-87 error list and its new/deferred classification."""
     payload = response_payload(response)
     errors = payload.get("errors")
 
@@ -232,7 +232,7 @@ def assert_bag_result_contract(
     expect_bag_identity: bool = False,
     expect_bag_identity_absent: bool = False,
 ) -> None:
-    """Assert the documented response contract."""
+    """Assert the response contract described by EPS-87."""
     assert_bag_close_response(
         response=response,
         expected_status=expected_status,
@@ -274,3 +274,84 @@ def assert_bag_result_contract(
             assert field not in payload, (
                 f"{operation}: {field} must be absent; response={response}"
             )
+
+
+def assert_eps83_label_content(
+    response: dict[str, Any],
+    *,
+    expected_destination: str,
+    expected_seal_number: str | None = None,
+    expected_transport_type: str | None = None,
+    expected_member_barcodes: list[str] | set[str] | tuple[str, ...] | None = None,
+    excluded_barcodes: list[str] | set[str] | tuple[str, ...] | None = None,
+    operation: str = "bag.close",
+) -> dict[str, Any]:
+    """Assert and parse EPS-83 Placeholder JSON bag label content."""
+    import json
+
+    payload = response_payload(response)
+    bag_barcode = payload.get("bagBarcode")
+    bag_label_b64 = payload.get("bagLabel")
+
+    assert isinstance(bag_barcode, str) and bag_barcode.strip(), (
+        f"{operation}: missing or empty bagBarcode; response={response}"
+    )
+    assert isinstance(bag_label_b64, str) and bag_label_b64.strip(), (
+        f"{operation}: missing or empty bagLabel; response={response}"
+    )
+
+    try:
+        decoded_bytes = base64.b64decode(bag_label_b64, validate=True)
+    except Exception as exc:
+        raise AssertionError(
+            f"{operation}: bagLabel is not valid Base64; error={exc}"
+        ) from exc
+
+    try:
+        label_data = json.loads(decoded_bytes.decode("utf-8"))
+    except Exception as exc:
+        raise AssertionError(
+            f"{operation}: decoded bagLabel is not valid UTF-8 JSON; error={exc}"
+        ) from exc
+
+    assert isinstance(label_data, dict), f"{operation}: label must be a JSON object"
+    assert label_data.get("bagBarcode") == bag_barcode, (
+        f"{operation}: label bagBarcode ({label_data.get('bagBarcode')}) "
+        f"does not match payload bagBarcode ({bag_barcode})"
+    )
+    assert label_data.get("destinationCenterCode") == expected_destination, (
+        f"{operation}: label destinationCenterCode mismatch"
+    )
+
+    if expected_seal_number is not None:
+        assert label_data.get("sealNumber") == expected_seal_number, (
+            f"{operation}: label sealNumber mismatch"
+        )
+    if expected_transport_type is not None:
+        assert label_data.get("transportType") == expected_transport_type, (
+            f"{operation}: label transportType mismatch"
+        )
+
+    member_barcodes = label_data.get("memberBarcodes", [])
+    assert isinstance(member_barcodes, list), (
+        f"{operation}: label memberBarcodes must be a list"
+    )
+    assert label_data.get("memberCount") == len(member_barcodes), (
+        f"{operation}: memberCount ({label_data.get('memberCount')}) "
+        f"does not match len(memberBarcodes) ({len(member_barcodes)})"
+    )
+
+    if expected_member_barcodes is not None:
+        for bc in expected_member_barcodes:
+            assert bc in member_barcodes, (
+                f"{operation}: expected barcode {bc} not in label memberBarcodes"
+            )
+
+    if excluded_barcodes is not None:
+        for bc in excluded_barcodes:
+            assert bc not in member_barcodes, (
+                f"{operation}: failed/excluded barcode {bc} found in label memberBarcodes"
+            )
+
+    assert "createdAt" in label_data, f"{operation}: missing createdAt in label"
+    return label_data

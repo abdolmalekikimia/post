@@ -16,9 +16,9 @@ DEFAULT_TIMEOUT_SECONDS = 10
 TARGET_BY_MESSAGE_TYPE = MappingProxyType(
     {
         "auth": "Auth",
-        "item.register": "RegisterItem",
-        "route.assign": "AssignRoute",
-        "container.close": "CloseContainer",
+        "inbound.register": "RegisterInbound",
+        "destination.assign": "AssignDestination",
+        "bag.close": "CloseBag",
     }
 )
 
@@ -28,6 +28,7 @@ class DeviceWebSocketClient:
 
     RECORD_SEPARATOR = "\x1e"
     JSON_PROTOCOL = MappingProxyType({"protocol": "json", "version": 1})
+    PING_FRAME = MappingProxyType({"type": 6})
 
     def __init__(
         self,
@@ -36,15 +37,17 @@ class DeviceWebSocketClient:
     ) -> None:
         if timeout <= 0:
             raise ValueError("WebSocket timeout must be greater than zero")
-        self.ws_url = f"{ws_url.rstrip('/')}/hubs/device"
+        self.ws_url = f"{ws_url.rstrip('/')}/ws/device"
         self.timeout = timeout
         self._socket: WebSocket | None = None
+        self._buffer: str = ""
         self.last_exchange: dict[str, Any] = {}
 
     def connect(self) -> dict[str, Any]:
         if self._socket is not None:
             self.close()
 
+        self._buffer = ""
         protocol = dict(self.JSON_PROTOCOL)
         self.last_exchange = {
             "webSocketUrl": self.ws_url,
@@ -70,6 +73,7 @@ class DeviceWebSocketClient:
     def close(self) -> None:
         socket = self._socket
         self._socket = None
+        self._buffer = ""
         if socket is not None:
             socket.close()
 
@@ -138,13 +142,49 @@ class DeviceWebSocketClient:
         if timeout is not None:
             self._socket.settimeout(timeout)
 
-        raw_response = self._socket.recv()
-        if isinstance(raw_response, bytes):
-            raw_response = raw_response.decode("utf-8")
-        if not isinstance(raw_response, str):
-            raise RuntimeError("Expected a text SignalR WebSocket response")
+        while self.RECORD_SEPARATOR not in self._buffer:
+            raw_response = self._socket.recv()
+            if isinstance(raw_response, bytes):
+                raw_response = raw_response.decode("utf-8")
+            if not isinstance(raw_response, str):
+                raise RuntimeError("Expected a text SignalR WebSocket response")
+            self._buffer += raw_response
 
-        return self._decode_frames(raw_response)
+        frames, self._buffer = self._decode_buffered_frames(self._buffer)
+        return frames
+
+    @classmethod
+    def _decode_buffered_frames(cls, buffer: str) -> tuple[list[dict[str, Any]], str]:
+        """Decode complete JSON frames from buffer and return (frames, remaining_buffer)."""
+        if cls.RECORD_SEPARATOR not in buffer:
+            return [], buffer
+
+        parts = buffer.split(cls.RECORD_SEPARATOR)
+        remaining = parts[-1]
+        complete_chunks = parts[:-1]
+
+        decoder = json.JSONDecoder()
+        frames: list[dict[str, Any]] = []
+
+        for chunk in complete_chunks:
+            chunk = chunk.strip()
+            while chunk:
+                try:
+                    frame, consumed = decoder.raw_decode(chunk)
+                except JSONDecodeError as exc:
+                    raise RuntimeError(
+                        f"Invalid SignalR JSON frame: {chunk!r}"
+                    ) from exc
+
+                if not isinstance(frame, dict):
+                    raise RuntimeError(
+                        f"Expected a SignalR JSON object frame, got: {frame!r}"
+                    )
+
+                frames.append(frame)
+                chunk = chunk[consumed:].lstrip()
+
+        return frames, remaining
 
     def _receive_handshake(self) -> list[dict[str, Any]]:
         frames = self._receive_frames()
@@ -213,7 +253,11 @@ class DeviceWebSocketClient:
                 frame_type = frame.get("type")
 
                 if frame_type == 6:
-                    # SignalR ping/keep-alive frame.
+                    # SignalR ping/keep-alive frame: reply with ping to maintain connection
+                    try:
+                        self._send_frame(dict(self.PING_FRAME))
+                    except Exception:
+                        pass
                     continue
 
                 if frame_type == 7:

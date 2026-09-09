@@ -11,7 +11,7 @@ def assert_pending_response(
     operation: str,
     expected_origin_code: str | None,
 ) -> None:
-    """Validate the bounded Pending response used by the Destination Lookup story."""
+    """Validate the bounded Pending response used by the EPS-60 story."""
     status = response_field(response, "status")
     assert status in (1, "1"), (
         f"{operation}: expected status=1 (Pending), got {status!r}; "
@@ -39,7 +39,7 @@ def assert_destination_lookup_success(
     response: dict[str, Any],
     operation: str,
 ) -> None:
-    """Validate successful 14-digit destination lookup for Destination Lookup."""
+    """Validate successful 14-digit destination lookup for EPS-60."""
     status = response_field(response, "status")
     assert status in (0, "0"), (
         f"{operation}: expected status=0, got {status!r}; response={response}"
@@ -61,7 +61,7 @@ def assert_rejected_response(
     response: dict[str, Any],
     operation: str,
 ) -> None:
-    """Validate a definite Delivery Network rejection, which is not Pending."""
+    """Validate a definite Postal rejection, which is not Pending."""
     status = response_field(response, "status")
     assert status in (2, "2"), (
         f"{operation}: expected status=2, got {status!r}; response={response}"

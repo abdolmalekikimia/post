@@ -8,13 +8,13 @@ from assertions.signalr_assertions import assert_success_response, response_fiel
 from clients.rest_client import RestClient
 from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
-from flows.destination.destination_assignment_success_flow import (
-    run_destination_assignment_success_cases,
+from flows.destination.eps71_success_flow import (
+    run_eps71_success_cases,
     success_step_names,
 )
-from flows.destination.destination_update_success_flow import (
-    run_destination_update_success_cases,
-    success_step_names as destination_update_success_step_names,
+from flows.destination.eps73_success_flow import (
+    run_eps73_success_cases,
+    success_step_names as eps73_success_step_names,
 )
 from services.admin_service import AdminService
 from services.device_service import DeviceService
@@ -43,13 +43,13 @@ def run_websocket_flow(
     """Run a focused WebSocket/SignalR transport and device-message flow."""
     report = ExecutionReport("WebSocket/SignalR success flow")
     report.register(
-        "1. [BASE] Admin Login - POST /api/admin/login",
-        "2. [BASE] Update Device IP - PUT /api/devices/{deviceId}/ip",
-        "3. [BASE] WebSocket Connect/Handshake - /hubs/device",
+        "1. [BASE] Admin Login - POST /admin/login",
+        "2. [BASE] Update Device IP - PUT /admin/devices/{deviceId}/ip",
+        "3. [BASE] WebSocket Connect/Handshake - /ws/device",
         "4. [BASE] WebSocket Auth Invocation - Auth",
-        "5. [BASE] WebSocket RegisterItem Invocation - RegisterItem",
+        "5. [BASE] WebSocket RegisterInbound Invocation - RegisterInbound",
         *success_step_names(6),
-        *destination_update_success_step_names(10),
+        *eps73_success_step_names(10),
     )
 
     rest_client = RestClient(
@@ -60,7 +60,7 @@ def run_websocket_flow(
 
     admin_token = run_step(
         report,
-        "1. [BASE] Admin Login - POST /api/admin/login",
+        "1. [BASE] Admin Login - POST /admin/login",
         lambda: admin.login(
             run_settings.admin_username,
             run_settings.admin_password,
@@ -73,7 +73,7 @@ def run_websocket_flow(
 
     run_step(
         report,
-        "2. [BASE] Update Device IP - PUT /api/devices/{deviceId}/ip",
+        "2. [BASE] Update Device IP - PUT /admin/devices/{deviceId}/ip",
         lambda: admin.update_device_ip(
             run_settings.device_id,
             run_settings.device_ip,
@@ -92,7 +92,7 @@ def run_websocket_flow(
     try:
         connection_response = run_step(
             report,
-            "3. [BASE] WebSocket Connect/Handshake - /hubs/device",
+            "3. [BASE] WebSocket Connect/Handshake - /ws/device",
             ws.connect,
             success_message="WebSocket متصل شد و handshake موفق شد.",
             detail=lambda _: exchange_detail(ws.last_exchange),
@@ -133,14 +133,14 @@ def run_websocket_flow(
                 numeric_barcode(run_settings.barcode, run_settings),
                 run_settings.inbound_timeout_ms,
             )
-            assert_success_response(response, "RegisterItem")
+            assert_success_response(response, "RegisterInbound")
             return response
 
         register_response = run_step(
             report,
-            "5. [BASE] WebSocket RegisterItem Invocation - RegisterItem",
+            "5. [BASE] WebSocket RegisterInbound Invocation - RegisterInbound",
             register_base,
-            success_message="RegisterItem از طریق WebSocket موفق شد.",
+            success_message="RegisterInbound از طریق WebSocket موفق شد.",
             detail=lambda _: exchange_detail(ws.last_exchange),
             error_detail=lambda error: {
                 "error": f"{type(error).__name__}: {error}",
@@ -148,7 +148,7 @@ def run_websocket_flow(
             },
         )
         wait_between_api_calls(run_settings.api_delay_seconds)
-        destination_assignment_success = run_destination_assignment_success_cases(
+        eps71_success = run_eps71_success_cases(
             device=device,
             run_settings=run_settings,
             report=report,
@@ -156,7 +156,7 @@ def run_websocket_flow(
             start_step=6,
         )
         wait_between_api_calls(run_settings.api_delay_seconds)
-        destination_update_success = run_destination_update_success_cases(
+        eps73_success = run_eps73_success_cases(
             device=device,
             run_settings=run_settings,
             report=report,
@@ -165,11 +165,12 @@ def run_websocket_flow(
         )
         scenario_responses = {
             "BASE": {"register": register_response},
-            "Destination Assignment": destination_assignment_success.responses,
-            "Destination Update": destination_update_success.responses,
+            "EPS-71": eps71_success.responses,
+            "EPS-73": eps73_success.responses,
         }
     finally:
         ws.close()
+        rest_client.close()
 
     report.print()
     return WebSocketFlowResult(

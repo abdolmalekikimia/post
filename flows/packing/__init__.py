@@ -1,1 +1,1 @@
-"""Shared packing contract flows for Container Selection/79/87/89."""
+"""Shared packing contract flows for EPS-76/79/87/89."""

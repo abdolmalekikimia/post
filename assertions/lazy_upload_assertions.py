@@ -6,14 +6,14 @@ from assertions.signalr_assertions import response_field, response_payload
 def assert_lazy_upload_stage_response(
     response: dict[str, Any],
     expected_status: int = 0,
-    operation: str = "RegisterItem",
+    operation: str = "RegisterInbound",
     expected_fields: dict[str, Any] | None = None,
     expected_error_contains: str | None = None,
 ) -> None:
     """Validate the real-time response that stages a lazy-upload item.
 
-    The worker's eventual Upstream/Object Storage result is intentionally not
-    asserted here because Lazy Upload exposes no diagnostic endpoint for the queue.
+    The worker's eventual Core/Object Storage result is intentionally not
+    asserted here because EPS-64 exposes no diagnostic endpoint for the queue.
     Future negative cases can reuse the same assertion by changing the
     expected status and error text.
     """

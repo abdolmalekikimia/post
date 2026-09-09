@@ -1,7 +1,7 @@
 import logging
 
 
-def get_logger(name: str = "integration-automation-portfolio") -> logging.Logger:
+def get_logger(name: str = "sorting-device-postal-integration") -> logging.Logger:
     logger = logging.getLogger(name)
     if not logger.handlers:
         handler = logging.StreamHandler()

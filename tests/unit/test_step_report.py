@@ -104,20 +104,20 @@ def test_exchange_detail_contains_sent_payload_and_received_response():
 
 def test_report_has_only_payload_response_and_expectation_sections():
     report = ExecutionReport("compact flow")
-    report.register("RegisterItem")
+    report.register("RegisterInbound")
 
     run_step(
         report,
-        "RegisterItem",
+        "RegisterInbound",
         lambda: {"status": 0},
         detail=lambda _: {
-            "payloadSent": {"target": "RegisterItem"},
+            "payloadSent": {"target": "RegisterInbound"},
             "responseReceived": {"status": 0},
         },
     )
 
     rendered = report.render()
-    assert "payloadSent: {\"target\": \"RegisterItem\"}" in rendered
+    assert "payloadSent: {\"target\": \"RegisterInbound\"}" in rendered
     assert "responseReceived: {\"status\": 0}" in rendered
     assert "expected: PASS" in rendered
     assert "duration" not in rendered

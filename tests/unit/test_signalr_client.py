@@ -45,7 +45,7 @@ def test_signalr_handshake_and_invocation():
     )
 
     with patch("clients.signalr_client.create_connection", return_value=fake_socket):
-        client = DeviceWebSocketClient("wss://api.example.invalid")
+        client = DeviceWebSocketClient("ws://localhost:5025")
         connection_details = client.connect()
         result = client.invoke("Auth", [{"messageType": "auth"}], "a1")
         client.close()
@@ -70,19 +70,41 @@ def test_signalr_handshake_and_invocation():
     assert 0 < fake_socket.timeouts[0] <= 10
 
 
-def test_signalr_parser_accepts_multiple_frames_and_keep_alive():
-    raw = '{"type":6}\x1e{"type":3,"invocationId":"r1","result":{"status":0}}\x1e'
+def test_signalr_parser_handles_fragmented_frames():
+    client = DeviceWebSocketClient("ws://localhost:5025")
+    # Simulate fragmented frame where first chunk is partial JSON and second chunk completes it
+    frames, remaining = client._decode_buffered_frames('{"type":3,"invoc')
+    assert frames == []
+    assert remaining == '{"type":3,"invoc'
 
-    frames = DeviceWebSocketClient._decode_frames(raw)
+    frames, remaining = client._decode_buffered_frames(
+        '{"type":3,"invocationId":"a1","result":{"status":0}}\x1e'
+    )
+    assert len(frames) == 1
+    assert frames[0]["invocationId"] == "a1"
+    assert remaining == ""
 
-    assert frames == [
-        {"type": 6},
-        {"type": 3, "invocationId": "r1", "result": {"status": 0}},
-    ]
+
+def test_signalr_client_replies_to_ping():
+    fake_socket = FakeSocket(
+        [
+            "{}\x1e",
+            '{"type":6}\x1e{"type":3,"invocationId":"a1","result":{"status":0}}\x1e',
+        ]
+    )
+    with patch("clients.signalr_client.create_connection", return_value=fake_socket):
+        client = DeviceWebSocketClient("ws://localhost:5025")
+        client.connect()
+        result = client.invoke("Auth", [{"messageType": "auth"}], "a1")
+        client.close()
+
+    assert result == {"status": 0}
+    # fake_socket.sent should contain handshake, invocation, and the ping reply
+    assert '{"type":6}\x1e' in fake_socket.sent
 
 
 def test_send_message_supports_destination_assignment_and_bag_close():
-    client = DeviceWebSocketClient("wss://api.example.invalid")
+    client = DeviceWebSocketClient("ws://localhost:5025")
     client.invoke = lambda target, arguments, invocation_id=None: {
         "target": target,
         "arguments": arguments,
@@ -91,21 +113,21 @@ def test_send_message_supports_destination_assignment_and_bag_close():
 
     assignment = client.send_message(
         {
-            "messageType": "route.assign",
+            "messageType": "destination.assign",
             "correlationId": "assignment-1",
             "payload": {},
         }
     )
     bag_close = client.send_message(
         {
-            "messageType": "container.close",
+            "messageType": "bag.close",
             "correlationId": "bag-1",
             "payload": {},
         }
     )
 
-    assert assignment["target"] == "AssignRoute"
-    assert bag_close["target"] == "CloseContainer"
+    assert assignment["target"] == "AssignDestination"
+    assert bag_close["target"] == "CloseBag"
 
 
 def test_signalr_rejects_business_correlation_id_mismatch():
@@ -120,7 +142,7 @@ def test_signalr_rejects_business_correlation_id_mismatch():
     )
 
     with patch("clients.signalr_client.create_connection", return_value=fake_socket):
-        client = DeviceWebSocketClient("wss://api.example.invalid")
+        client = DeviceWebSocketClient("ws://localhost:5025")
         client.connect()
         with pytest.raises(RuntimeError, match="correlationId mismatch"):
             client.invoke("Auth", [{"messageType": "auth"}], "a1")
@@ -130,7 +152,7 @@ def test_signalr_invocation_timeout_uses_socket_remaining_timeout():
     fake_socket = SilentSocket(["{}\x1e"])
 
     with patch("clients.signalr_client.create_connection", return_value=fake_socket):
-        client = DeviceWebSocketClient("wss://api.example.invalid", timeout=0.25)
+        client = DeviceWebSocketClient("ws://localhost:5025", timeout=0.25)
         client.connect()
         with pytest.raises(TimeoutError, match="Timed out waiting for SignalR invocation"):
             client.invoke("Auth", [{"messageType": "auth"}], "a1")
@@ -141,4 +163,4 @@ def test_signalr_invocation_timeout_uses_socket_remaining_timeout():
 
 def test_signalr_client_rejects_non_positive_timeout():
     with pytest.raises(ValueError, match="timeout"):
-        DeviceWebSocketClient("wss://api.example.invalid", timeout=0)
+        DeviceWebSocketClient("ws://localhost:5025", timeout=0)

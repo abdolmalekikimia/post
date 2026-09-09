@@ -1,10 +1,10 @@
-from dataclasses import dataclass, field
+from dataclasses import MISSING, dataclass, field, fields
 import os
 from pathlib import Path
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from utils.site_codes import (
+from utils.exchange_centers import (
     configured_or_random_exchange_center_code,
 )
 
@@ -14,13 +14,13 @@ load_dotenv(PROJECT_ROOT / "config" / "test.env")
 
 @dataclass(frozen=True)
 class Settings:
-    base_url: str = os.getenv("BASE_URL", "https://api.example.invalid")
-    ws_url: str = os.getenv("WS_URL", "wss://api.example.invalid")
+    base_url: str = os.getenv("BASE_URL", "http://localhost:5025")
+    ws_url: str = os.getenv("WS_URL", "ws://localhost:5025")
     admin_username: str = os.getenv("ADMIN_USERNAME", "admin")
     admin_password: str = os.getenv("ADMIN_PASSWORD", "")
-    device_id: str = os.getenv("DEVICE_ID", "demo-device")
-    device_token: str = os.getenv("DEVICE_TOKEN", "demo-token")
-    device_ip: str = os.getenv("DEVICE_IP", "0.0.0.0")
+    device_id: str = os.getenv("DEVICE_ID", "SIM-DEVICE-001")
+    device_token: str = os.getenv("DEVICE_TOKEN", "test-token-123")
+    device_ip: str = os.getenv("DEVICE_IP", "127.0.0.1")
     barcode: str = os.getenv("BARCODE", "123456789012345678901234")
     unique_run_data: bool = os.getenv(
         "UNIQUE_RUN_DATA",
@@ -29,274 +29,484 @@ class Settings:
     test_run_id: str = field(
         default_factory=lambda: str(uuid4().int % 900_000 + 100_000)
     )
-    configuration_sync_case: str = os.getenv("CONFIGURATION_SYNC_CASE", "TC-02")
-    configuration_sync_active_device_id: str = os.getenv(
-        "CONFIGURATION_SYNC_ACTIVE_DEVICE_ID",
-        "demo-device",
+    eps40_case: str = os.getenv("EPS40_CASE", "all")
+    eps40_active_device_id: str = os.getenv(
+        "EPS40_ACTIVE_DEVICE_ID",
+        "SIM-DEVICE-001",
     )
-    configuration_sync_active_device_token: str = os.getenv(
-        "CONFIGURATION_SYNC_ACTIVE_DEVICE_TOKEN",
-        "demo-token",
+    eps40_active_device_token: str = os.getenv(
+        "EPS40_ACTIVE_DEVICE_TOKEN",
+        "test-token-123",
     )
-    configuration_sync_inactive_device_id: str = os.getenv(
-        "CONFIGURATION_SYNC_INACTIVE_DEVICE_ID",
-        "CONFIGURATION_SYNC-INACTIVE-001",
+    eps40_inactive_device_id: str = os.getenv(
+        "EPS40_INACTIVE_DEVICE_ID",
+        "EPS40-INACTIVE-001",
     )
-    configuration_sync_inactive_device_token: str = os.getenv(
-        "CONFIGURATION_SYNC_INACTIVE_DEVICE_TOKEN",
-        "configuration_sync-inactive-token",
+    eps40_inactive_device_token: str = os.getenv(
+        "EPS40_INACTIVE_DEVICE_TOKEN",
+        "eps40-inactive-token",
     )
-    configuration_sync_unknown_device_id: str = os.getenv(
-        "CONFIGURATION_SYNC_UNKNOWN_DEVICE_ID",
-        "CONFIGURATION_SYNC-UNKNOWN-001",
+    eps40_unknown_device_id: str = os.getenv(
+        "EPS40_UNKNOWN_DEVICE_ID",
+        "EPS40-UNKNOWN-001",
     )
-    configuration_sync_wrong_device_token: str = os.getenv(
-        "CONFIGURATION_SYNC_WRONG_DEVICE_TOKEN",
+    eps40_wrong_device_token: str = os.getenv(
+        "EPS40_WRONG_DEVICE_TOKEN",
         "wrong-device-token",
     )
-    policy_sync_case: str = os.getenv("POLICY_SYNC_CASE", "TC-03")
-    policy_sync_new_device_id: str = os.getenv(
-        "POLICY_SYNC_NEW_DEVICE_ID",
-        "POLICY_SYNC-NEW-demo-device",
+    eps46_case: str = os.getenv("EPS46_CASE", "all")
+    eps46_new_device_id: str = os.getenv(
+        "EPS46_NEW_DEVICE_ID",
+        "EPS46-NEW-DEVICE-001",
     )
-    policy_sync_new_device_token: str = os.getenv(
-        "POLICY_SYNC_NEW_DEVICE_TOKEN",
-        "policy_sync-new-token",
+    eps46_new_device_token: str = os.getenv(
+        "EPS46_NEW_DEVICE_TOKEN",
+        "eps46-new-token",
     )
-    policy_sync_active_device_id: str = os.getenv(
-        "POLICY_SYNC_ACTIVE_DEVICE_ID",
-        "demo-device",
+    eps46_active_device_id: str = os.getenv(
+        "EPS46_ACTIVE_DEVICE_ID",
+        "SIM-DEVICE-001",
     )
-    policy_sync_active_device_token: str = os.getenv(
-        "POLICY_SYNC_ACTIVE_DEVICE_TOKEN",
-        "demo-token",
+    eps46_active_device_token: str = os.getenv(
+        "EPS46_ACTIVE_DEVICE_TOKEN",
+        "test-token-123",
     )
-    history_backend_stress_fixtures_ready: bool = os.getenv(
-        "HISTORY_BACKEND_STRESS_FIXTURES_READY",
+    eps53_stress_fixtures_ready: bool = os.getenv(
+        "EPS53_STRESS_FIXTURES_READY",
         "0",
     ).lower() in {"1", "true", "yes", "on"}
-    delivery_merge_stress_fixtures_ready: bool = os.getenv(
-        "DELIVERY_MERGE_STRESS_FIXTURES_READY",
+    eps55_stress_fixtures_ready: bool = os.getenv(
+        "EPS55_STRESS_FIXTURES_READY",
         "0",
     ).lower() in {"1", "true", "yes", "on"}
-    destination_lookup_case: str = os.getenv("DESTINATION_LOOKUP_CASE", "TC-01")
-    destination_lookup_local_exchange_center_code: str = os.getenv(
-        "DESTINATION_LOOKUP_LOCAL_EXCHANGE_CENTER_CODE",
-        "10001",
+    eps60_case: str = os.getenv("EPS60_CASE", "all")
+    eps60_local_exchange_center_code: str = os.getenv(
+        "EPS60_LOCAL_EXCHANGE_CENTER_CODE",
+        "59544",
     )
-    destination_lookup_barcode_24: str = os.getenv(
-        "DESTINATION_LOOKUP_BARCODE_24",
+    eps60_barcode_24: str = os.getenv(
+        "EPS60_BARCODE_24",
         "590009876543211234567890",
     )
-    destination_lookup_barcode_37: str = os.getenv(
-        "DESTINATION_LOOKUP_BARCODE_37",
+    eps60_barcode_37: str = os.getenv(
+        "EPS60_BARCODE_37",
         "5900098765432112345678900000000000000",
     )
-    destination_lookup_barcode_14: str = os.getenv(
-        "DESTINATION_LOOKUP_BARCODE_14",
+    eps60_barcode_14: str = os.getenv(
+        "EPS60_BARCODE_14",
         "59000987654321",
     )
-    destination_lookup_invalid_barcode: str = os.getenv(
-        "DESTINATION_LOOKUP_INVALID_BARCODE",
+    eps60_invalid_barcode: str = os.getenv(
+        "EPS60_INVALID_BARCODE",
         "1234567890",
     )
-    destination_lookup_pending_timeout_ms: int = int(
-        os.getenv("DESTINATION_LOOKUP_PENDING_TIMEOUT_MS", "5000")
+    eps60_pending_timeout_ms: int = int(
+        os.getenv("EPS60_PENDING_TIMEOUT_MS", "5000")
     )
-    destination_lookup_short_timeout_ms: int = int(
-        os.getenv("DESTINATION_LOOKUP_SHORT_TIMEOUT_MS", "1000")
+    eps60_short_timeout_ms: int = int(
+        os.getenv("EPS60_SHORT_TIMEOUT_MS", "1000")
     )
-    destination_lookup_destination_timeout_ms: int = int(
-        os.getenv("DESTINATION_LOOKUP_DESTINATION_TIMEOUT_MS", "5000")
+    eps60_destination_timeout_ms: int = int(
+        os.getenv("EPS60_DESTINATION_TIMEOUT_MS", "5000")
     )
-    destination_lookup_latency_grace_ms: int = int(
-        os.getenv("DESTINATION_LOOKUP_LATENCY_GRACE_MS", "1500")
+    eps60_latency_grace_ms: int = int(
+        os.getenv("EPS60_LATENCY_GRACE_MS", "1500")
     )
-    container_selection_case: str = os.getenv("CONTAINER_SELECTION_CASE", "all")
-    container_selection_destination_code: str = field(
+    eps76_case: str = os.getenv("EPS76_CASE", "all")
+    eps76_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("CONTAINER_SELECTION_DESTINATION_CODE")
+            os.getenv("EPS76_DESTINATION_CODE")
         )
     )
-    container_selection_second_destination_code: str = field(
+    eps76_second_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("CONTAINER_SELECTION_SECOND_DESTINATION_CODE")
+            os.getenv("EPS76_SECOND_DESTINATION_CODE")
         )
     )
-    container_selection_default_chute: str = os.getenv("CONTAINER_SELECTION_DEFAULT_CHUTE", "CH-04")
-    container_selection_transport_type: str = os.getenv("CONTAINER_SELECTION_TRANSPORT_TYPE", "road")
-    container_selection_barcode_prefix: str = os.getenv(
-        "CONTAINER_SELECTION_BARCODE_PREFIX",
+    eps76_default_chute: str = os.getenv("EPS76_DEFAULT_CHUTE", "CH-04")
+    eps76_transport_type: str = os.getenv("EPS76_TRANSPORT_TYPE", "road")
+    eps76_barcode_prefix: str = os.getenv(
+        "EPS76_BARCODE_PREFIX",
         "760000000000000000",
     )
-    destination_assignment_case: str = os.getenv("DESTINATION_ASSIGNMENT_CASE", "all")
-    destination_assignment_destination_code: str = field(
+    eps71_case: str = os.getenv("EPS71_CASE", "all")
+    eps71_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("DESTINATION_ASSIGNMENT_DESTINATION_CODE")
+            os.getenv("EPS71_DESTINATION_CODE")
         )
     )
-    destination_assignment_second_destination_code: str = field(
+    eps71_second_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("DESTINATION_ASSIGNMENT_SECOND_DESTINATION_CODE")
+            os.getenv("EPS71_SECOND_DESTINATION_CODE")
         )
     )
-    destination_assignment_valid_barcode: str = os.getenv(
-        "DESTINATION_ASSIGNMENT_VALID_BARCODE",
+    eps71_valid_barcode: str = os.getenv(
+        "EPS71_VALID_BARCODE",
         "710000000000000000000001",
     )
-    destination_assignment_second_valid_barcode: str = os.getenv(
-        "DESTINATION_ASSIGNMENT_SECOND_VALID_BARCODE",
+    eps71_second_valid_barcode: str = os.getenv(
+        "EPS71_SECOND_VALID_BARCODE",
         "710000000000000000000002",
     )
-    destination_assignment_unregistered_barcode: str = os.getenv(
-        "DESTINATION_ASSIGNMENT_UNREGISTERED_BARCODE",
+    eps71_unregistered_barcode: str = os.getenv(
+        "EPS71_UNREGISTERED_BARCODE",
         "710000000000000000000099",
     )
-    destination_assignment_default_chute: str = os.getenv(
-        "DESTINATION_ASSIGNMENT_DEFAULT_CHUTE",
+    eps71_default_chute: str = os.getenv(
+        "EPS71_DEFAULT_CHUTE",
         "CH-04",
     )
-    destination_assignment_transport_type: str = os.getenv(
-        "DESTINATION_ASSIGNMENT_TRANSPORT_TYPE",
+    eps71_transport_type: str = os.getenv(
+        "EPS71_TRANSPORT_TYPE",
         "road",
     )
-    destination_update_case: str = os.getenv("DESTINATION_UPDATE_CASE", "all")
-    destination_update_initial_destination_code: str = field(
+    eps73_case: str = os.getenv("EPS73_CASE", "all")
+    eps73_initial_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("DESTINATION_UPDATE_INITIAL_DESTINATION_CODE")
+            os.getenv("EPS73_INITIAL_DESTINATION_CODE")
         )
     )
-    destination_update_new_destination_code: str = field(
+    eps73_new_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("DESTINATION_UPDATE_NEW_DESTINATION_CODE")
+            os.getenv("EPS73_NEW_DESTINATION_CODE")
         )
     )
-    destination_update_closed_destination_code: str = field(
+    eps73_closed_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("DESTINATION_UPDATE_CLOSED_DESTINATION_CODE")
+            os.getenv("EPS73_CLOSED_DESTINATION_CODE")
         )
     )
-    destination_update_initial_chute: str = os.getenv(
-        "DESTINATION_UPDATE_INITIAL_CHUTE",
+    eps73_initial_chute: str = os.getenv(
+        "EPS73_INITIAL_CHUTE",
         "CH-A",
     )
-    destination_update_new_chute: str = os.getenv(
-        "DESTINATION_UPDATE_NEW_CHUTE",
+    eps73_new_chute: str = os.getenv(
+        "EPS73_NEW_CHUTE",
         "CH-B",
     )
-    destination_update_alternate_chute: str = os.getenv(
-        "DESTINATION_UPDATE_ALTERNATE_CHUTE",
+    eps73_alternate_chute: str = os.getenv(
+        "EPS73_ALTERNATE_CHUTE",
         "CH-Z",
     )
-    destination_update_transport_type: str = os.getenv(
-        "DESTINATION_UPDATE_TRANSPORT_TYPE",
+    eps73_transport_type: str = os.getenv(
+        "EPS73_TRANSPORT_TYPE",
         "road",
     )
-    destination_update_barcode_prefix: str = os.getenv(
-        "DESTINATION_UPDATE_BARCODE_PREFIX",
+    eps73_barcode_prefix: str = os.getenv(
+        "EPS73_BARCODE_PREFIX",
         "730000000000000000",
     )
-    destination_update_negative_barcode: str = os.getenv(
-        "DESTINATION_UPDATE_NEGATIVE_BARCODE",
+    eps73_negative_barcode: str = os.getenv(
+        "EPS73_NEGATIVE_BARCODE",
         "730000000000000000000099",
     )
-    destination_update_inbound_timeout_ms: int = int(
-        os.getenv("DESTINATION_UPDATE_INBOUND_TIMEOUT_MS", "3000")
+    eps73_inbound_timeout_ms: int = int(
+        os.getenv("EPS73_INBOUND_TIMEOUT_MS", "3000")
+    )
+    eps66_case: str = os.getenv("EPS66_CASE", "all")
+    eps66_backend_mode: str = os.getenv("EPS66_BACKEND_MODE", "mock")
+    eps66_core_ready: bool = os.getenv(
+        "EPS66_CORE_READY",
+        "0",
+    ).lower() in {"1", "true", "yes", "on"}
+    eps66_origin_code: str = os.getenv("EPS66_ORIGIN_CODE", "59544")
+    eps66_initial_destination_code: str = os.getenv(
+        "EPS66_INITIAL_DESTINATION_CODE",
+        "71956",
+    )
+    eps66_new_destination_code: str = os.getenv(
+        "EPS66_NEW_DESTINATION_CODE",
+        "81746",
+    )
+    eps66_initial_chute: str = os.getenv("EPS66_INITIAL_CHUTE", "CH-A")
+    eps66_new_chute: str = os.getenv("EPS66_NEW_CHUTE", "CH-B")
+    eps66_same_destination_barcode: str = os.getenv(
+        "EPS66_SAME_DESTINATION_BARCODE",
+        "660000000000000000000001",
+    )
+    eps66_destination_change_barcode: str = os.getenv(
+        "EPS66_DESTINATION_CHANGE_BARCODE",
+        "660000000000000000000002",
+    )
+    eps66_closed_bag_barcode: str = os.getenv(
+        "EPS66_CLOSED_BAG_BARCODE",
+        "660000000000000000000003",
+    )
+    eps66_timestamp_barcode: str = os.getenv(
+        "EPS66_TIMESTAMP_BARCODE",
+        "660000000000000000000004",
+    )
+    eps66_retry_barcode: str = os.getenv(
+        "EPS66_RETRY_BARCODE",
+        "660000000000000000000005",
     )
     timeout_seconds: float = float(os.getenv("TIMEOUT_SECONDS", "10"))
     inbound_timeout_ms: int = int(os.getenv("INBOUND_TIMEOUT_MS", "5000"))
     api_delay_seconds: float = float(os.getenv("API_DELAY_SECONDS", "5"))
-    lazy_upload_image_barcode: str = os.getenv(
-        "LAZY_UPLOAD_IMAGE_BARCODE",
+    eps64_image_barcode: str = os.getenv(
+        "EPS64_IMAGE_BARCODE",
         "300000000000000000000001",
     )
-    lazy_upload_supplementary_barcode: str = os.getenv(
-        "LAZY_UPLOAD_SUPPLEMENTARY_BARCODE",
+    eps64_supplementary_barcode: str = os.getenv(
+        "EPS64_SUPPLEMENTARY_BARCODE",
         "300000000000000000000002",
     )
-    lazy_upload_image_id: str = os.getenv("LAZY_UPLOAD_IMAGE_ID", "img-001")
-    lazy_upload_image_description: str = os.getenv(
-        "LAZY_UPLOAD_IMAGE_DESCRIPTION",
+    eps64_image_id: str = os.getenv("EPS64_IMAGE_ID", "img-001")
+    eps64_image_description: str = os.getenv(
+        "EPS64_IMAGE_DESCRIPTION",
         "front",
     )
-    lazy_upload_negative_case: str = os.getenv("LAZY_UPLOAD_NEGATIVE_CASE", "all")
-    lazy_upload_negative_barcode: str = os.getenv(
-        "LAZY_UPLOAD_NEGATIVE_BARCODE",
+    eps64_negative_case: str = os.getenv("EPS64_NEGATIVE_CASE", "all")
+    eps64_negative_barcode: str = os.getenv(
+        "EPS64_NEGATIVE_BARCODE",
         "300000000000000000000010",
     )
-    lazy_upload_rejected_barcode: str = os.getenv(
-        "LAZY_UPLOAD_REJECTED_BARCODE",
+    eps64_rejected_barcode: str = os.getenv(
+        "EPS64_REJECTED_BARCODE",
         "300000000000000000000011",
     )
-    lazy_upload_timeout_barcode: str = os.getenv(
-        "LAZY_UPLOAD_TIMEOUT_BARCODE",
+    eps64_timeout_barcode: str = os.getenv(
+        "EPS64_TIMEOUT_BARCODE",
         "300000000000000000000012",
     )
-    lazy_upload_unavailable_barcode: str = os.getenv(
-        "LAZY_UPLOAD_UNAVAILABLE_BARCODE",
+    eps64_unavailable_barcode: str = os.getenv(
+        "EPS64_UNAVAILABLE_BARCODE",
         "300000000000000000000013",
     )
-    status_override_case: str = os.getenv("STATUS_OVERRIDE_CASE", "all")
-    status_override_returning_barcode: str = os.getenv(
-        "STATUS_OVERRIDE_RETURNING_BARCODE",
+    # Core Inbound Query (CPS-20) settings
+    core_base_url: str = os.getenv("CORE_BASE_URL", "http://localhost:5080")
+    core_inbound_query_path: str = os.getenv(
+        "CORE_INBOUND_QUERY_PATH", "/api/edge/parcels/inbound-query"
+    )
+    core_inbound_query_timeout_ms: int = int(
+        os.getenv("CORE_INBOUND_QUERY_TIMEOUT_MS", "3000")
+    )
+    core_timeout_seconds: float = float(os.getenv("CORE_TIMEOUT_SECONDS", "5.0"))
+    cps20_returning_barcode: str = os.getenv(
+        "CPS20_RETURNING_BARCODE", "590001234567890123456788"
+    )
+    cps20_rejected_barcode: str = os.getenv(
+        "CPS20_REJECTED_BARCODE", "590001234567890123456787"
+    )
+    cps20_normal_barcode: str = os.getenv(
+        "CPS20_NORMAL_BARCODE", "590001234567890123456789"
+    )
+    cps20_new_barcode: str = os.getenv(
+        "CPS20_NEW_BARCODE", "590009999999999999999999"
+    )
+
+    core_presigned_url_path: str = os.getenv(
+        "CORE_PRESIGNED_URL_PATH", "/api/edge/images/presigned-url"
+    )
+    cps80_barcode: str = os.getenv(
+        "CPS80_BARCODE", "590001234567890123456789"
+    )
+    cps80_content_type: str = os.getenv(
+        "CPS80_CONTENT_TYPE", "image/jpeg"
+    )
+    cps80_image_size_bytes: int = int(
+        os.getenv("CPS80_IMAGE_SIZE_BYTES", "102400")
+    )
+    cps80_image_type: str = os.getenv(
+        "CPS80_IMAGE_TYPE", "ParcelTopView"
+    )
+
+    # CPS-65: Parcel Status Evaluation thresholds (hours)
+    cps65_duplicate_read_threshold_hours: int = int(
+        os.getenv("CPS65_DUPLICATE_READ_THRESHOLD_HOURS", "6")
+    )
+    cps65_returned_threshold_hours: int = int(
+        os.getenv("CPS65_RETURNED_THRESHOLD_HOURS", "72")
+    )
+    cps65_return_to_origin_threshold_hours: int = int(
+        os.getenv("CPS65_RETURN_TO_ORIGIN_THRESHOLD_HOURS", "72")
+    )
+
+    # CPS-86: Operational Result Storage settings
+    core_operational_results_path: str = os.getenv(
+        "CORE_OPERATIONAL_RESULTS_PATH", "/api/edge/operational-results"
+    )
+    cps86_correlation_id: str = os.getenv(
+        "CPS86_CORRELATION_ID", ""
+    )
+    cps86_parcel_barcode: str = os.getenv(
+        "CPS86_PARCEL_BARCODE", "860000000000000000000001"
+    )
+    cps86_call_result: str = os.getenv(
+        "CPS86_CALL_RESULT", "RegisterInbound_Success"
+    )
+    cps86_error_code: str = os.getenv(
+        "CPS86_ERROR_CODE", ""
+    )
+    cps86_error_message: str = os.getenv(
+        "CPS86_ERROR_MESSAGE", ""
+    )
+    cps86_attempts: int = int(os.getenv("CPS86_ATTEMPTS", "1"))
+    cps86_final_status: str = os.getenv(
+        "CPS86_FINAL_STATUS", "Success"
+    )
+
+    # CPS-58: Image Metadata Registration settings
+    core_image_metadata_path: str = os.getenv(
+        "CORE_IMAGE_METADATA_PATH", "/api/edge/images/metadata"
+    )
+    cps58_parcel_barcode: str = os.getenv(
+        "CPS58_PARCEL_BARCODE", "580000000000000000000001"
+    )
+    cps58_edge_id: str = os.getenv("CPS58_EDGE_ID", "EDGE-TEST-001")
+    cps58_device_id: str = os.getenv("CPS58_DEVICE_ID", "DEVICE-TEST-001")
+    cps58_center_id: str = os.getenv("CPS58_CENTER_ID", "59544")
+    cps58_object_key: str = os.getenv(
+        "CPS58_OBJECT_KEY", "parcels/2025/03/10/580000000000000000000001_top.jpg"
+    )
+    cps58_bucket_name: str = os.getenv("CPS58_BUCKET_NAME", "parcel-images")
+    cps58_content_type: str = os.getenv("CPS58_CONTENT_TYPE", "image/jpeg")
+    cps58_file_size_bytes: int = int(os.getenv("CPS58_FILE_SIZE_BYTES", "102400"))
+    cps58_attachment_type: str = os.getenv("CPS58_ATTACHMENT_TYPE", "ParcelTopView")
+    cps58_reading_record_id: str = os.getenv("CPS58_READING_RECORD_ID", "")
+    cps58_event_type: str = os.getenv("CPS58_EVENT_TYPE", "ImageUploaded")
+
+    # CPS-67 Bag/Dispatch Storage settings
+    core_bag_dispatch_path: str = os.getenv(
+        "CORE_BAG_DISPATCH_PATH", "/api/edge/bags"
+    )
+    core_collection_dispatch_path: str = os.getenv(
+        "CORE_COLLECTION_DISPATCH_PATH", "/api/edge/dispatches"
+    )
+    cps67_bag_barcode: str = os.getenv("CPS67_BAG_BARCODE", "670000000000010000000001")
+    cps67_dispatch_id: str = os.getenv("CPS67_DISPATCH_ID", "11111111-1111-1111-1111-444444444444")
+    cps67_origin_center: str = os.getenv("CPS67_ORIGIN_CENTER", "59544")
+    cps67_dest_center: str = os.getenv("CPS67_DEST_CENTER", "71956")
+    cps67_seal_number: str = os.getenv("CPS67_SEAL_NUMBER", "SEA-12345")
+    cps67_transport_type: str = os.getenv("CPS67_TRANSPORT_TYPE", "road")
+    cps67_scheduled_at_utc: str = os.getenv("CPS67_SCHEDULED_AT_UTC", "")
+    cps67_correlation_id: str = os.getenv("CPS67_CORRELATION_ID", "")
+    cps67_idempotency_key: str = os.getenv("CPS67_IDEMPOTENCY_KEY", "")
+    cps67_created_by_device_id: str = os.getenv("CPS67_CREATED_BY_DEVICE_ID", "")
+
+    # CPS-74: Sorting Device Management settings
+    core_device_path: str = os.getenv(
+        "CORE_DEVICE_PATH", "/api/edge/devices"
+    )
+    cps74_device_name: str = os.getenv(
+        "CPS74_DEVICE_NAME", "Main Conveyor Sorter"
+    )
+    cps74_exchange_center_code: str = os.getenv(
+        "CPS74_EXCHANGE_CENTER_CODE", "11369"
+    )
+
+    # CPS-77: Bootstrap Configuration Management settings
+    core_bootstrap_path: str = os.getenv(
+        "CORE_BOOTSTRAP_PATH", "/api/edge/bootstrap"
+    )
+    core_admin_configurations_path: str = os.getenv(
+        "CORE_ADMIN_CONFIGURATIONS_PATH", "/api/admin/configurations"
+    )
+    cps77_exchange_center_code: str = os.getenv(
+        "CPS77_EXCHANGE_CENTER_CODE", "59544"
+    )
+    cps77_config_version: int = int(os.getenv("CPS77_CONFIG_VERSION", "1"))
+    cps77_auto_sync_enabled: bool = os.getenv(
+        "CPS77_AUTO_SYNC_ENABLED", "true",
+    ).lower() in {"1", "true", "yes", "on"}
+
+    # CPS-82: Edge Health Monitoring settings
+    core_heartbeats_path: str = os.getenv(
+        "CORE_HEARTBEATS_PATH", "/api/edge/heartbeats"
+    )
+    core_admin_health_path: str = os.getenv(
+        "CORE_ADMIN_HEALTH_PATH", "/api/admin/edge-health"
+    )
+    cps82_edge_id: str = os.getenv(
+        "CPS82_EDGE_ID", "EDGE-TEST-001"
+    )
+    cps82_exchange_center_code: str = os.getenv(
+        "CPS82_EXCHANGE_CENTER_CODE", "59544"
+    )
+    cps82_offline_threshold_seconds: int = int(
+        os.getenv("CPS82_OFFLINE_THRESHOLD_SECONDS", "120")
+    )
+    cps82_heartbeat_timeout_seconds: int = int(
+        os.getenv("CPS82_HEARTBEAT_TIMEOUT_SECONDS", "60")
+    )
+
+    eps68_case: str = os.getenv("EPS68_CASE", "all")
+    eps68_returning_barcode: str = os.getenv(
+        "EPS68_RETURNING_BARCODE",
         "680000000000000000000001",
     )
-    status_override_rejected_barcode: str = os.getenv(
-        "STATUS_OVERRIDE_REJECTED_BARCODE",
+    eps68_rejected_barcode: str = os.getenv(
+        "EPS68_REJECTED_BARCODE",
         "680000000000000000000002",
     )
-    status_override_success_barcode: str = os.getenv(
-        "STATUS_OVERRIDE_SUCCESS_BARCODE",
+    eps68_success_barcode: str = os.getenv(
+        "EPS68_SUCCESS_BARCODE",
         "680000000000000000000003",
     )
-    status_override_error_barcode: str = os.getenv(
-        "STATUS_OVERRIDE_ERROR_BARCODE",
+    eps68_error_barcode: str = os.getenv(
+        "EPS68_ERROR_BARCODE",
         "680000000000000000000004",
     )
-    status_override_origin_code: str = os.getenv("STATUS_OVERRIDE_ORIGIN_CODE", "10001")
-    status_override_original_destination_code: str = field(
+    eps68_origin_code: str = os.getenv("EPS68_ORIGIN_CODE", "59544")
+    eps68_original_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("STATUS_OVERRIDE_ORIGINAL_DESTINATION_CODE")
+            os.getenv("EPS68_ORIGINAL_DESTINATION_CODE")
         )
     )
-    export_before_container_case: str = os.getenv("EXPORT_BEFORE_CONTAINER_CASE", "all")
-    export_before_container_destination_code: str = field(
+    eps79_case: str = os.getenv("EPS79_CASE", "all")
+    eps79_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("EXPORT_BEFORE_CONTAINER_DESTINATION_CODE")
+            os.getenv("EPS79_DESTINATION_CODE")
         )
     )
-    export_before_container_second_destination_code: str = field(
+    eps79_second_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("EXPORT_BEFORE_CONTAINER_SECOND_DESTINATION_CODE")
+            os.getenv("EPS79_SECOND_DESTINATION_CODE")
         )
     )
-    export_before_container_barcode_prefix: str = os.getenv(
-        "EXPORT_BEFORE_CONTAINER_BARCODE_PREFIX",
+    eps79_barcode_prefix: str = os.getenv(
+        "EPS79_BARCODE_PREFIX",
         "790000000000000000",
     )
-    export_before_container_chute: str = os.getenv("EXPORT_BEFORE_CONTAINER_CHUTE", "CH-04")
-    container_response_case: str = os.getenv("CONTAINER_RESPONSE_CASE", "all")
-    container_response_destination_code: str = field(
+    eps79_chute: str = os.getenv("EPS79_CHUTE", "CH-04")
+    eps83_case: str = os.getenv("EPS83_CASE", "all")
+    eps83_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("CONTAINER_RESPONSE_DESTINATION_CODE")
+            os.getenv("EPS83_DESTINATION_CODE")
         )
     )
-    container_response_barcode_prefix: str = os.getenv(
-        "CONTAINER_RESPONSE_BARCODE_PREFIX",
+    eps83_barcode_prefix: str = os.getenv(
+        "EPS83_BARCODE_PREFIX",
+        "830000000000000000",
+    )
+    eps83_chute: str = os.getenv("EPS83_CHUTE", "CH-04")
+    eps87_case: str = os.getenv("EPS87_CASE", "all")
+    eps87_destination_code: str = field(
+        default_factory=lambda: configured_or_random_exchange_center_code(
+            os.getenv("EPS87_DESTINATION_CODE")
+        )
+    )
+    eps87_barcode_prefix: str = os.getenv(
+        "EPS87_BARCODE_PREFIX",
         "870000000000000000",
     )
-    container_response_chute: str = os.getenv("CONTAINER_RESPONSE_CHUTE", "CH-04")
-    physical_container_audit_case: str = os.getenv("PHYSICAL_CONTAINER_AUDIT_CASE", "all")
-    physical_container_audit_destination_code: str = field(
+    eps87_chute: str = os.getenv("EPS87_CHUTE", "CH-04")
+    eps89_case: str = os.getenv("EPS89_CASE", "all")
+    eps89_destination_code: str = field(
         default_factory=lambda: configured_or_random_exchange_center_code(
-            os.getenv("PHYSICAL_CONTAINER_AUDIT_DESTINATION_CODE")
+            os.getenv("EPS89_DESTINATION_CODE")
         )
     )
-    physical_container_audit_barcode_prefix: str = os.getenv(
-        "PHYSICAL_CONTAINER_AUDIT_BARCODE_PREFIX",
+    eps89_barcode_prefix: str = os.getenv(
+        "EPS89_BARCODE_PREFIX",
         "890000000000000000",
     )
-    physical_container_audit_chute: str = os.getenv("PHYSICAL_CONTAINER_AUDIT_CHUTE", "CH-04")
+    eps89_chute: str = os.getenv("EPS89_CHUTE", "CH-04")
+    eps113_case: str = os.getenv("EPS113_CASE", "all")
+    eps113_reprint_barcode: str = os.getenv(
+        "EPS113_REPRINT_BARCODE",
+        "830000000000000000000001",
+    )
     stress_iterations: int = int(os.getenv("STRESS_ITERATIONS", "50"))
     stress_workers: int = int(os.getenv("STRESS_WORKERS", "1"))
     stress_delay_seconds: float = float(
@@ -308,126 +518,140 @@ class Settings:
     ).lower() in {"1", "true", "yes", "on"}
 
     def __post_init__(self) -> None:
-        destination_assignment_destination = configured_or_random_exchange_center_code(
-            self.destination_assignment_destination_code
+        self._refresh_environment_defaults()
+        eps71_destination = configured_or_random_exchange_center_code(
+            self.eps71_destination_code
         )
-        destination_assignment_second_destination = configured_or_random_exchange_center_code(
-            self.destination_assignment_second_destination_code,
-            excluded=(destination_assignment_destination,),
+        eps71_second_destination = configured_or_random_exchange_center_code(
+            self.eps71_second_destination_code,
+            excluded=(eps71_destination,),
         )
-        container_selection_destination = configured_or_random_exchange_center_code(
-            self.container_selection_destination_code
+        eps76_destination = configured_or_random_exchange_center_code(
+            self.eps76_destination_code
         )
-        container_selection_second_destination = configured_or_random_exchange_center_code(
-            self.container_selection_second_destination_code,
-            excluded=(container_selection_destination,),
+        eps76_second_destination = configured_or_random_exchange_center_code(
+            self.eps76_second_destination_code,
+            excluded=(eps76_destination,),
         )
-        destination_update_initial_destination = configured_or_random_exchange_center_code(
-            self.destination_update_initial_destination_code
+        eps73_initial_destination = configured_or_random_exchange_center_code(
+            self.eps73_initial_destination_code
         )
-        destination_update_new_destination = configured_or_random_exchange_center_code(
-            self.destination_update_new_destination_code,
-            excluded=(destination_update_initial_destination,),
+        eps73_new_destination = configured_or_random_exchange_center_code(
+            self.eps73_new_destination_code,
+            excluded=(eps73_initial_destination,),
         )
-        destination_update_closed_destination = configured_or_random_exchange_center_code(
-            self.destination_update_closed_destination_code,
-            excluded=(destination_update_initial_destination, destination_update_new_destination),
-        )
-        object.__setattr__(
-            self,
-            "destination_assignment_destination_code",
-            destination_assignment_destination,
+        eps73_closed_destination = configured_or_random_exchange_center_code(
+            self.eps73_closed_destination_code,
+            excluded=(eps73_initial_destination, eps73_new_destination),
         )
         object.__setattr__(
             self,
-            "destination_assignment_second_destination_code",
-            destination_assignment_second_destination,
+            "eps71_destination_code",
+            eps71_destination,
         )
         object.__setattr__(
             self,
-            "container_selection_destination_code",
-            container_selection_destination,
+            "eps71_second_destination_code",
+            eps71_second_destination,
         )
         object.__setattr__(
             self,
-            "container_selection_second_destination_code",
-            container_selection_second_destination,
+            "eps76_destination_code",
+            eps76_destination,
         )
         object.__setattr__(
             self,
-            "destination_update_initial_destination_code",
-            destination_update_initial_destination,
+            "eps76_second_destination_code",
+            eps76_second_destination,
         )
         object.__setattr__(
             self,
-            "destination_update_new_destination_code",
-            destination_update_new_destination,
+            "eps73_initial_destination_code",
+            eps73_initial_destination,
         )
         object.__setattr__(
             self,
-            "destination_update_closed_destination_code",
-            destination_update_closed_destination,
-        )
-        export_before_container_destination = configured_or_random_exchange_center_code(
-            self.export_before_container_destination_code
-        )
-        export_before_container_second_destination = configured_or_random_exchange_center_code(
-            self.export_before_container_second_destination_code,
-            excluded=(export_before_container_destination,),
-        )
-        container_response_destination = configured_or_random_exchange_center_code(
-            self.container_response_destination_code
-        )
-        physical_container_audit_destination = configured_or_random_exchange_center_code(
-            self.physical_container_audit_destination_code
+            "eps73_new_destination_code",
+            eps73_new_destination,
         )
         object.__setattr__(
             self,
-            "export_before_container_destination_code",
-            export_before_container_destination,
+            "eps73_closed_destination_code",
+            eps73_closed_destination,
+        )
+        eps79_destination = configured_or_random_exchange_center_code(
+            self.eps79_destination_code
+        )
+        eps79_second_destination = configured_or_random_exchange_center_code(
+            self.eps79_second_destination_code,
+            excluded=(eps79_destination,),
+        )
+        eps87_destination = configured_or_random_exchange_center_code(
+            self.eps87_destination_code
+        )
+        eps83_destination = configured_or_random_exchange_center_code(
+            self.eps83_destination_code
+        )
+        eps89_destination = configured_or_random_exchange_center_code(
+            self.eps89_destination_code
         )
         object.__setattr__(
             self,
-            "export_before_container_second_destination_code",
-            export_before_container_second_destination,
+            "eps83_destination_code",
+            eps83_destination,
         )
         object.__setattr__(
             self,
-            "container_response_destination_code",
-            container_response_destination,
+            "eps87_destination_code",
+            eps87_destination,
         )
         object.__setattr__(
             self,
-            "physical_container_audit_destination_code",
-            physical_container_audit_destination,
+            "eps79_destination_code",
+            eps79_destination,
         )
-        status_override_origin = configured_or_random_exchange_center_code(
-            self.status_override_origin_code
-        )
-        status_override_destination = configured_or_random_exchange_center_code(
-            self.status_override_original_destination_code,
-            excluded=(status_override_origin,),
-        )
-        object.__setattr__(self, "status_override_origin_code", status_override_origin)
         object.__setattr__(
             self,
-            "status_override_original_destination_code",
-            status_override_destination,
+            "eps79_second_destination_code",
+            eps79_second_destination,
+        )
+        object.__setattr__(
+            self,
+            "eps87_destination_code",
+            eps87_destination,
+        )
+        object.__setattr__(
+            self,
+            "eps89_destination_code",
+            eps89_destination,
+        )
+        eps68_origin = configured_or_random_exchange_center_code(
+            self.eps68_origin_code
+        )
+        eps68_destination = configured_or_random_exchange_center_code(
+            self.eps68_original_destination_code,
+            excluded=(eps68_origin,),
+        )
+        object.__setattr__(self, "eps68_origin_code", eps68_origin)
+        object.__setattr__(
+            self,
+            "eps68_original_destination_code",
+            eps68_destination,
         )
         if self.timeout_seconds <= 0:
             raise ValueError("TIMEOUT_SECONDS must be greater than zero")
         if self.inbound_timeout_ms <= 0:
             raise ValueError("INBOUND_TIMEOUT_MS must be greater than zero")
-        if self.destination_lookup_pending_timeout_ms <= 0:
-            raise ValueError("DESTINATION_LOOKUP_PENDING_TIMEOUT_MS must be greater than zero")
-        if self.destination_lookup_short_timeout_ms <= 0:
-            raise ValueError("DESTINATION_LOOKUP_SHORT_TIMEOUT_MS must be greater than zero")
-        if self.destination_lookup_destination_timeout_ms <= 0:
+        if self.eps60_pending_timeout_ms <= 0:
+            raise ValueError("EPS60_PENDING_TIMEOUT_MS must be greater than zero")
+        if self.eps60_short_timeout_ms <= 0:
+            raise ValueError("EPS60_SHORT_TIMEOUT_MS must be greater than zero")
+        if self.eps60_destination_timeout_ms <= 0:
             raise ValueError(
-                "DESTINATION_LOOKUP_DESTINATION_TIMEOUT_MS must be greater than zero"
+                "EPS60_DESTINATION_TIMEOUT_MS must be greater than zero"
             )
-        if self.destination_lookup_latency_grace_ms < 0:
-            raise ValueError("DESTINATION_LOOKUP_LATENCY_GRACE_MS cannot be negative")
+        if self.eps60_latency_grace_ms < 0:
+            raise ValueError("EPS60_LATENCY_GRACE_MS cannot be negative")
         if self.api_delay_seconds < 0:
             raise ValueError("API_DELAY_SECONDS cannot be negative")
         if self.stress_iterations <= 0:
@@ -436,6 +660,50 @@ class Settings:
             raise ValueError("STRESS_WORKERS must be greater than zero")
         if self.stress_delay_seconds < 0:
             raise ValueError("STRESS_DELAY_SECONDS cannot be negative")
+
+        # Validate CPS-58 settings
+        if not self.cps58_parcel_barcode:
+            raise ValueError("CPS58_PARCEL_BARCODE must be provided")
+
+        # Validate CPS-67 settings
+        if not self.cps67_bag_barcode:
+            raise ValueError("CPS67_BAG_BARCODE must be provided")
+        if not self.cps67_dispatch_id:
+            raise ValueError("CPS67_DISPATCH_ID must be provided")
+
+    def _refresh_environment_defaults(self) -> None:
+        """Refresh omitted scalar defaults when Settings is instantiated.
+
+        The old field expressions evaluated ``os.getenv`` while this module was
+        imported.  That made a later ``monkeypatch.setenv`` or environment
+        update invisible to a new Settings instance.  Factory-backed fields
+        already read the environment per instance; this covers the remaining
+        scalar fields without changing explicitly supplied values.
+        """
+        for definition in fields(self):
+            if (
+                definition.name == "test_run_id"
+                or definition.default is MISSING
+                or definition.default_factory is not MISSING
+            ):
+                continue
+
+            current = getattr(self, definition.name)
+            if current != definition.default:
+                continue
+
+            raw_value = os.getenv(definition.name.upper())
+            if raw_value is None:
+                continue
+            if isinstance(current, bool):
+                value = raw_value.lower() in {"1", "true", "yes", "on"}
+            elif isinstance(current, int) and not isinstance(current, bool):
+                value = int(raw_value)
+            elif isinstance(current, float):
+                value = float(raw_value)
+            else:
+                value = raw_value
+            object.__setattr__(self, definition.name, value)
 
 
 settings = Settings()
