@@ -228,7 +228,7 @@ result = query_handler.handle_by_id(GetImageMetadataByIdQuery(attachment_id))
 ```text
 Execution report: CPS-58 Image Metadata Registration Flow
 01. [PASS] TC-01: Successful metadata registration after upload
-    payloadSent: {"method": "POST", "url": "http://192.168.20.196:5080/api/edge/images/metadata", "payload": {"parcelBarcode": "580000000000000000000001", "edgeId": "EDGE-TEST-001", "objectKey": "parcels/2025/03/10/580000000000000000000001_top.jpg", "contentType": "image/jpeg", "attachmentType": "ParcelTopView", ...}, "headers": {"Content-Type": "application/json", "X-Correlation-ID": "...", "Authorization": "<redacted>"}}
+    payloadSent: {"method": "POST", "url": "http://localhost:5080/api/edge/images/metadata", "payload": {"parcelBarcode": "580000000000000000000001", "edgeId": "EDGE-TEST-001", "objectKey": "parcels/2025/03/10/580000000000000000000001_top.jpg", "contentType": "image/jpeg", "attachmentType": "ParcelTopView", ...}, "headers": {"Content-Type": "application/json", "X-Correlation-ID": "...", "Authorization": "<redacted>"}}
     responseReceived: {"statusCode": 202, "body": {"attachmentId": "11111111-1111-1111-1111-111111111111"}}
     expected: PASS
 

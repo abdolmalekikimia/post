@@ -34,7 +34,7 @@ def build_eps53_stress_cases(
             "invalid_dimensions", 2,
             lambda i: InboundStressInput(
                 (barcode24("10000", i),),
-                {"weightGrams": 1500, "dimensions": {"lengthMm": -1}},
+                {"weightGrams": 1500, "dimensions": {"lengthCm": -1}},
             ),
             weight=10,
         ),

@@ -182,11 +182,16 @@ def run_cps74_flow(
     responses: dict[str, dict[str, Any]] = {}
     case_failures: list[FlowExecutionError] = []
     
+    created_device_id: Optional[str] = None
+    created_device_token: Optional[str] = None
+    
     try:
         for case in cases:
             step_name = f"{case.case_id}: {case.title}"
             
             def make_call() -> dict[str, Any]:
+                nonlocal created_device_id, created_device_token
+                
                 if case.category == "success":
                     # TC-01: Register
                     response_data = client.request(
@@ -206,6 +211,14 @@ def run_cps74_flow(
                     assert_device_response(
                         response_data, "CPS-74 TC-01", expected_status=201
                     )
+                    data_dict = (
+                        response_data.json()
+                        if hasattr(response_data, "json") and callable(response_data.json)
+                        else (response_data.get("body", response_data) if isinstance(response_data, dict) else {})
+                    )
+                    if isinstance(data_dict, dict):
+                        created_device_id = data_dict.get("deviceId")
+                        created_device_token = data_dict.get("deviceToken")
                     return response_data
                 
                 elif case.category == "duplicate_logical_code":
@@ -229,12 +242,12 @@ def run_cps74_flow(
                     return response_data
                 
                 elif case.category == "update_descriptive_fields":
-                    # Need to get initial device first
-                    if not case.initial_device_id or not case.initial_device_token:
+                    dev_id = case.initial_device_id or created_device_id
+                    if not dev_id:
                         raise ValueError("TC-03 requires previous device data")
                     response_data = client.request(
                         method="PUT",
-                        path=f"{run_settings.core_device_path}/{case.initial_device_id}",
+                        path=f"{run_settings.core_device_path}/{dev_id}",
                         payload={
                             "name": case.name,
                             "owner": case.owner,
@@ -247,19 +260,19 @@ def run_cps74_flow(
                         response_data, "CPS-74 TC-03", expected_status=200
                     )
                     assert_device_id_unchanged(
-                        response_data, "CPS-74 TC-03", initial_device_id=case.initial_device_id
+                        response_data, "CPS-74 TC-03", initial_device_id=dev_id
                     )
-                    # Store update response for next steps that might use device_id
-                    client._stored_columns[f"{case.case_id}_updated"] = True
+                    if hasattr(client, "_stored_columns"):
+                        client._stored_columns[f"{case.case_id}_updated"] = True
                     return response_data
                 
                 elif case.category == "invalid_exchange_center_code":
-                    # TC-04: Attempt to change exchange_center_code via update (should fail)
-                    if not case.initial_device_id or not case.initial_device_token:
+                    dev_id = case.initial_device_id or created_device_id
+                    if not dev_id:
                         raise ValueError("TC-04 requires previous device data")
                     response_data = client.request(
                         method="PUT",
-                        path=f"{run_settings.core_device_path}/{case.initial_device_id}",
+                        path=f"{run_settings.core_device_path}/{dev_id}",
                         payload={
                             "name": case.name,
                             "owner": case.owner,
@@ -275,24 +288,10 @@ def run_cps74_flow(
                     return response_data
                 
                 elif case.category == "deactivate":
-                    # TC-05: Deactivate
-                    # First get device to find device_id
-                    list_devices = client.request(
-                        method="GET",
-                        path=f"{run_settings.core_device_path}?exchangeCenterCode={case.exchange_center_code}",
-                        headers={"Content-Type": "application/json"}
-                    )
-                    device_id = None
-                    device_token = None
-                    if list_devices.get("items") and len(list_devices["items"]) > 0:
-                        device_id = list_devices["items"][0].get("deviceId")
-                    if not device_id:
-                        # Assume hardcoded for test
-                        device_id = case.initial_device_id if case.initial_device_id else "test-device-id"
-                    
+                    dev_id = case.initial_device_id or created_device_id or "test-device-id"
                     response_data = client.request(
                         method="POST",
-                        path=f"{run_settings.core_device_path}/{device_id}/deactivate",
+                        path=f"{run_settings.core_device_path}/{dev_id}/deactivate",
                         payload={},
                         headers={"Content-Type": "application/json"},
                     )

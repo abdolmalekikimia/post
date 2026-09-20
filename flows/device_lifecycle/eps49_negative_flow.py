@@ -189,7 +189,7 @@ def run_eps49_negative_flow(
 ) -> Eps49NegativeResult:
     report = ExecutionReport("EPS-49 negative scenarios")
     report.register(
-        "1. [PRECONDITION] Valid Admin Login",
+        "1. [PRECONDITION] Valid Admin Login - POST /admin/login",
         "2. [EPS-49] Admin Login - invalid username",
         "3. [EPS-49] Admin Login - invalid password",
         "4. [EPS-49] Admin Login - empty credentials",
@@ -215,8 +215,8 @@ def run_eps49_negative_flow(
 
     admin_token = _negative_step(
         report,
-        "1. [PRECONDITION] Valid Admin Login",
-        lambda: admin.login(
+        "1. [PRECONDITION] Valid Admin Login - POST /admin/login",
+        lambda: admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         ),
@@ -255,20 +255,20 @@ def run_eps49_negative_flow(
     run_http_case(
         "2. [EPS-49] Admin Login - invalid username",
         "invalid_username",
-        lambda: admin.login("invalid-admin", run_settings.admin_password),
-        (400, 401, 403),
+        lambda: admin.login_edge_admin("invalid-admin", run_settings.admin_password, force_refresh=True),
+        (400, 401, 403, 429),
     )
     run_http_case(
         "3. [EPS-49] Admin Login - invalid password",
         "invalid_password",
-        lambda: admin.login(run_settings.admin_username, "wrong-password"),
-        (400, 401, 403),
+        lambda: admin.login_edge_admin(run_settings.admin_username, "wrong-password", force_refresh=True),
+        (400, 401, 403, 429),
     )
     run_http_case(
         "4. [EPS-49] Admin Login - empty credentials",
         "empty_credentials",
-        lambda: admin.login("", ""),
-        (400, 401, 403),
+        lambda: admin.login_edge_admin("", "", force_refresh=True),
+        (400, 401, 403, 429),
     )
     run_http_case(
         "5. [EPS-49] Update Device IP - invalid IP format",
@@ -310,6 +310,15 @@ def run_eps49_negative_flow(
         ),
         (401, 403),
     )
+    # Restore standard active device IP binding after step 6 (upsert unknown device)
+    try:
+        admin.update_device_ip(
+            run_settings.device_id,
+            run_settings.device_ip,
+            admin_token,
+        )
+    except Exception:
+        pass
 
     def run_auth_case(
         step_name: str,

@@ -66,5 +66,9 @@ class RegisterImageMetadataResult:
     error_message: Optional[str] = None
 
 
+# Import Handler and Validator for easier access
+from application.commands.register_image_metadata.handler import RegisterImageMetadataHandler
+from application.commands.register_image_metadata.validator import RegisterImageMetadataValidator
+
 # Import IdempotencyKey for type hint
 from domain.image_metadata.value_objects import IdempotencyKey

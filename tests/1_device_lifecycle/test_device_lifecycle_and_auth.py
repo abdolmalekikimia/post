@@ -1,4 +1,5 @@
 import os
+import time
 import pytest
 
 from flows.success.task_success_flows import (
@@ -22,6 +23,8 @@ def _require_e2e() -> None:
 @pytest.mark.eps40_success
 def test_eps40_healthy_device_auth_success():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS40_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS40_SUCCESS=1 to run EPS-40 success scenario")
     result = run_eps40_success_flow()
     assert result.response.get("payload", {}).get("status") in (0, "0")
 
@@ -31,13 +34,17 @@ def test_eps40_healthy_device_auth_success():
 @pytest.mark.eps40_negative
 def test_eps40_negative_case():
     _require_e2e()
-    if os.getenv("RUN_EPS40_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_EPS40_NEGATIVE=1 to run EPS-40 negative scenarios")
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_EPS40_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_EPS40_NEGATIVE=1 to run EPS-40 negative scenarios")
 
     selected = os.getenv("EPS40_CASE", "all").upper()
     cases = build_eps40_cases()
     selected_cases = cases.values() if selected == "ALL" else [cases[selected]]
-    results = [run_eps40_case(case.case_id) for case in selected_cases]
+    results = []
+    for idx, case in enumerate(selected_cases):
+        if idx > 0:
+            time.sleep(2.0)
+        results.append(run_eps40_case(case.case_id))
     assert all(result.auth_response for result in results)
 
 
@@ -45,7 +52,7 @@ def test_eps40_negative_case():
 def test_eps40_negative_case_catalog():
     cases = build_eps40_cases()
     assert set(cases) == {"TC-02", "TC-03", "TC-04", "TC-06", "TC-07"}
-    assert cases["TC-04"].expected_error_contains == "device not active"
+    assert cases["TC-04"].expected_error_contains == "invalid device credentials"
     assert cases["TC-07"].register_ip is False
 
 
@@ -55,6 +62,8 @@ def test_eps40_negative_case_catalog():
 @pytest.mark.eps46_success
 def test_eps46_healthy_autodispatch_policy_success():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS46_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS46_SUCCESS=1 to run EPS-46 success scenario")
     result = run_eps46_success_flow()
     assert result.response.get("payload", {}).get("status") in (0, "0")
 
@@ -64,13 +73,17 @@ def test_eps46_healthy_autodispatch_policy_success():
 @pytest.mark.eps46_negative
 def test_eps46_negative_case():
     _require_e2e()
-    if os.getenv("RUN_EPS46_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_EPS46_NEGATIVE=1 to run EPS-46 negative scenarios")
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_EPS46_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_EPS46_NEGATIVE=1 to run EPS-46 negative scenarios")
 
     selected = os.getenv("EPS46_CASE", "all").upper()
     cases = build_eps46_cases()
     selected_cases = cases.values() if selected == "ALL" else [cases[selected]]
-    results = [run_eps46_case(case.case_id) for case in selected_cases]
+    results = []
+    for idx, case in enumerate(selected_cases):
+        if idx > 0:
+            time.sleep(2.0)
+        results.append(run_eps46_case(case.case_id))
     assert all(result.auth_response for result in results)
 
 
@@ -92,6 +105,8 @@ def test_eps46_negative_case_catalog():
 @pytest.mark.mixed
 def test_eps49_device_lifecycle_success():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS49_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS49_SUCCESS=1 to run EPS-49 success scenario")
     result = run_eps49_success_flow()
     assert result.admin_token
     assert result.update_ip_response
@@ -105,8 +120,8 @@ def test_eps49_device_lifecycle_success():
 @pytest.mark.mixed
 def test_eps49_negative_scenarios():
     _require_e2e()
-    if os.getenv("RUN_EPS49_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_EPS49_NEGATIVE=1 to run EPS-49 negative scenarios")
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_EPS49_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_EPS49_NEGATIVE=1 to run EPS-49 negative scenarios")
 
     result = run_eps49_negative_flow()
     assert set(result.responses) == {

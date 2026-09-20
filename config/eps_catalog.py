@@ -58,6 +58,10 @@ EPS_COVERAGE: tuple[EpsCoverage, ...] = (
         "Global Postal Mock scenario", "Pending, timeout and retry behavior",
     ),
     EpsCoverage(
+        "EPS-62", "SignalR", "Implemented", "Implemented", "نیاز ندارد", "Ready",
+        "Core Deferred Status Update fixtures", "Final status update after deferred responses",
+    ),
+    EpsCoverage(
         "EPS-64", "SignalR", "Implemented", "Implemented", "Planned", "Partial / External Dependency",
         "Lazy worker logs or SQLite evidence", "Async image upload behavior",
     ),
@@ -101,6 +105,31 @@ EPS_COVERAGE: tuple[EpsCoverage, ...] = (
     EpsCoverage(
         "EPS-113", "SignalR", "Implemented", "Implemented", "نیاز ندارد", "Partial / External Dependency",
         "Central Event Service and communication lifecycle fixtures", "Central communication events registration",
+    ),
+    EpsCoverage(
+        "EPS-117", "Mixed", "Implemented", "Implemented", "نیاز ندارد", "Ready",
+        "Edge telemetry events pipeline; Central operational event collector",
+        "Provisioning raw operational event data for central reporting dashboard",
+    ),
+    EpsCoverage(
+        "EPS-135", "API", "Planned", "Planned", "نیاز ندارد", "Doc-Gated",
+        "Edge barcodes (24-digit pattern); labels; exchange center codes; RS1 third column",
+        "Replace temporary barcode/label/center codes with official R1 values pre-global deployment",
+    ),
+    EpsCoverage(
+        "EPS-151", "Mixed", "Implemented", "Implemented", "Implemented", "Blocked / External Dependency",
+        "G2-08 basic crash; R3 tracking; real load injection; SQLite/queue state snapshot",
+        "Chaos/crash at scale — zero data loss recovery under production-level load",
+    ),
+    EpsCoverage(
+        "EPS-181", "API", "Implemented", "Implemented", "نیاز ندارد", "Ready",
+        "ASP.NET Core environment variable generation for Mock service negative scenarios",
+        "Negative test scenario definition and Mock environment variable generation for QA execution",
+    ),
+    EpsCoverage(
+        "EPS-201", "Mixed", "Implemented", "Implemented", "نیاز ندارد", "Blocked / External Dependency",
+        "Edge Installer v2.7.1; Nexus image registry; Hosts localhost & localhost",
+        "End-to-End test of automated container image update in Edge Installer with Nexus publishing",
     ),
 )
 

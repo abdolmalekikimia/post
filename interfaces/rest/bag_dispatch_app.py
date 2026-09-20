@@ -3,12 +3,12 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 import logging
 from typing import Optional
+from datetime import datetime
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
-from datetime import datetime
 
 from interfaces.rest.bag_dispatch_controller import BagDispatchController
 from interfaces.dto.bag_dispatch_dto import (
@@ -18,20 +18,12 @@ from interfaces.dto.bag_dispatch_dto import (
     RegisterDispatchResponseDTO,
     BagDTO,
     DispatchDTO,
+    PagedBagResponseDTO,
+    PagedDispatchResponseDTO,
     ErrorResponseDTO,
-    to_register_bag_command_dto,
-    to_register_dispatch_command_dto,
-    to_register_bag_response_dto,
-    to_register_dispatch_response_dto,
 )
-from application.commands.register_bag import (
-    RegisterBagHandler,
-    RegisterBagValidator,
-)
-from application.commands.register_dispatch import (
-    RegisterDispatchHandler,
-    RegisterDispatchValidator,
-)
+from application.commands.register_bag import RegisterBagHandler
+from application.commands.register_dispatch import RegisterDispatchHandler
 from application.queries.get_bag import GetBagHandler
 from application.queries.get_dispatch import GetDispatchHandler
 from infrastructure.persistence.in_memory_bag_dispatch_repository import (
@@ -56,16 +48,18 @@ class RegisterBagRequest(BaseModel):
     seal_number: str = Field(..., min_length=1, max_length=32)
     transport_type: str = Field(..., pattern=r"^(road|air|rail)$")
     closed_at_utc: str  # ISO 8601
-    correlation_id: str = Field(..., pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+    correlation_id: str = Field(
+        ...,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    )
     idempotency_key: str = Field(..., min_length=16, max_length=128)
     created_by_device_id: Optional[str] = None
 
-    @field_validator('closed_at_utc')
+    @field_validator("closed_at_utc")
     @classmethod
     def validate_closed_at(cls, v: str) -> str:
-        # Basic ISO 8601 validation
         try:
-            datetime.fromisoformat(v.replace('Z', '+00:00'))
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
         except ValueError:
             raise ValueError("closed_at_utc must be valid ISO 8601 datetime")
         return v
@@ -87,15 +81,17 @@ class RegisterDispatchRequest(BaseModel):
     dest_center: str = Field(..., min_length=5, max_length=5, pattern=r"^\d{5}$")
     transport_type: str = Field(..., pattern=r"^(road|air|rail)$")
     scheduled_at_utc: str  # ISO 8601
-    correlation_id: str = Field(..., pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+    correlation_id: str = Field(
+        ...,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    )
     idempotency_key: str = Field(..., min_length=16, max_length=128)
 
-    @field_validator('scheduled_at_utc')
+    @field_validator("scheduled_at_utc")
     @classmethod
     def validate_scheduled_at(cls, v: str) -> str:
-        # Basic ISO 8601 validation
         try:
-            datetime.fromisoformat(v.replace('Z', '+00:00'))
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
         except ValueError:
             raise ValueError("scheduled_at_utc must be valid ISO 8601 datetime")
         return v
@@ -117,10 +113,10 @@ class BagResponse(BaseModel):
     seal_number: str
     transport_type: str
     closed_at_utc: str
-    created_by_device_id: Optional[str] = None
     correlation_id: str
     idempotency_key: str
     created_at_utc: str
+    created_by_device_id: Optional[str] = None
 
 
 class DispatchResponse(BaseModel):
@@ -135,17 +131,33 @@ class DispatchResponse(BaseModel):
     created_at_utc: str
 
 
+class PagedBagResponse(BaseModel):
+    items: list[BagResponse]
+    total_count: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class PagedDispatchResponse(BaseModel):
+    items: list[DispatchResponse]
+    total_count: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class ErrorResponse(BaseModel):
     type: str = "https://tools.ietf.org/html/rfc9110#section-15.5.1"
     title: str
     status: int
     detail: Optional[str] = None
     instance: Optional[str] = None
+    errors: Optional[dict] = None
 
 
 # ============ Dependency Injection ============
 
-# Global instances (in production, use proper DI container)
 _bag_repository: Optional[InMemoryBagRepository] = None
 _dispatch_repository: Optional[InMemoryDispatchRepository] = None
 _bag_command_handler: Optional[RegisterBagHandler] = None
@@ -227,7 +239,6 @@ def get_controller() -> BagDispatchController:
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Bag/Dispatch Storage API...")
-    # Initialize connections here
     yield
     # Shutdown
     logger.info("Shutting down Bag/Dispatch Storage API...")
@@ -279,6 +290,7 @@ async def value_error_handler(request: Request, exc: ValueError):
 
 # ============ API Routes ============
 
+# 1. POST /api/edge/bags
 @app.post(
     "/api/edge/bags",
     response_model=RegisterBagResponse,
@@ -296,7 +308,6 @@ async def register_bag(request: RegisterBagRequest):
     """Register Bag"""
     controller = get_controller()
 
-    # Convert to DTO
     dto = RegisterBagRequestDTO(
         bag_barcode=request.bag_barcode,
         member_barcodes=request.member_barcodes,
@@ -330,6 +341,7 @@ async def register_bag(request: RegisterBagRequest):
         )
 
 
+# 2. POST /api/edge/dispatches
 @app.post(
     "/api/edge/dispatches",
     response_model=RegisterDispatchResponse,
@@ -347,7 +359,6 @@ async def register_dispatch(request: RegisterDispatchRequest):
     """Register Dispatch"""
     controller = get_controller()
 
-    # Convert to DTO
     dto = RegisterDispatchRequestDTO(
         dispatch_id=request.dispatch_id,
         bag_barcodes=request.bag_barcodes,
@@ -379,6 +390,7 @@ async def register_dispatch(request: RegisterDispatchRequest):
         )
 
 
+# 3. GET /api/edge/bags/{bag_barcode}
 @app.get(
     "/api/edge/bags/{bag_barcode}",
     response_model=BagResponse,
@@ -394,6 +406,7 @@ async def get_bag_by_barcode(bag_barcode: str):
         return JSONResponse(status_code=status_code, content=result.model_dump())
 
 
+# 4. GET /api/edge/dispatches/{dispatch_id}
 @app.get(
     "/api/edge/dispatches/{dispatch_id}",
     response_model=DispatchResponse,
@@ -405,6 +418,82 @@ async def get_dispatch_by_id(dispatch_id: str):
 
     if isinstance(result, DispatchDTO):
         return DispatchResponse(**result.__dict__)
+    else:
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+
+
+# 5. GET /api/edge/bags (Search)
+@app.get(
+    "/api/edge/bags",
+    response_model=PagedBagResponse,
+    summary="Search Bags",
+)
+async def search_bags(
+    bag_barcode: Optional[str] = None,
+    origin_center: Optional[str] = None,
+    dest_center: Optional[str] = None,
+    transport_type: Optional[str] = None,
+    correlation_id: Optional[str] = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=1000),
+):
+    controller = get_controller()
+    status_code, result = await controller.search_bags(
+        bag_barcode=bag_barcode,
+        origin_center=origin_center,
+        dest_center=dest_center,
+        transport_type=transport_type,
+        correlation_id=correlation_id,
+        page=page,
+        page_size=page_size,
+    )
+
+    if isinstance(result, PagedBagResponseDTO):
+        return PagedBagResponse(
+            items=[BagResponse(**item.__dict__) for item in result.items],
+            total_count=result.total_count,
+            page=result.page,
+            page_size=result.page_size,
+            total_pages=result.total_pages,
+        )
+    else:
+        return JSONResponse(status_code=status_code, content=result.model_dump())
+
+
+# 6. GET /api/edge/dispatches (Search)
+@app.get(
+    "/api/edge/dispatches",
+    response_model=PagedDispatchResponse,
+    summary="Search Dispatches",
+)
+async def search_dispatches(
+    dispatch_id: Optional[str] = None,
+    origin_center: Optional[str] = None,
+    dest_center: Optional[str] = None,
+    transport_type: Optional[str] = None,
+    correlation_id: Optional[str] = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=1000),
+):
+    controller = get_controller()
+    status_code, result = await controller.search_dispatches(
+        dispatch_id=dispatch_id,
+        origin_center=origin_center,
+        dest_center=dest_center,
+        transport_type=transport_type,
+        correlation_id=correlation_id,
+        page=page,
+        page_size=page_size,
+    )
+
+    if isinstance(result, PagedDispatchResponseDTO):
+        return PagedDispatchResponse(
+            items=[DispatchResponse(**item.__dict__) for item in result.items],
+            total_count=result.total_count,
+            page=result.page,
+            page_size=result.page_size,
+            total_pages=result.total_pages,
+        )
     else:
         return JSONResponse(status_code=status_code, content=result.model_dump())
 

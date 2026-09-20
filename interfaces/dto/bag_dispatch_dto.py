@@ -62,10 +62,10 @@ class BagDTO:
     seal_number: str
     transport_type: str
     closed_at_utc: str
-    created_by_device_id: Optional[str]
     correlation_id: str
     idempotency_key: str
     created_at_utc: str
+    created_by_device_id: Optional[str] = None
 
 
 @dataclass
@@ -83,6 +83,26 @@ class DispatchDTO:
 
 
 @dataclass
+class PagedBagResponseDTO:
+    """DTO for paginated Bag query response"""
+    items: List[BagDTO]
+    total_count: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+@dataclass
+class PagedDispatchResponseDTO:
+    """DTO for paginated Dispatch query response"""
+    items: List[DispatchDTO]
+    total_count: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+@dataclass
 class ErrorResponseDTO:
     """DTO for error response (ProblemDetails standard)"""
     type: str = "https://tools.ietf.org/html/rfc9110#section-15.5.1"
@@ -92,14 +112,33 @@ class ErrorResponseDTO:
     instance: Optional[str] = None
     errors: Optional[dict] = None
 
+    def model_dump(self) -> dict:
+        data = {
+            "type": self.type,
+            "title": self.title,
+            "status": self.status,
+            "detail": self.detail,
+            "instance": self.instance,
+        }
+        if self.errors is not None:
+            data["errors"] = self.errors
+        return data
+
+    def to_dict(self) -> dict:
+        return self.model_dump()
+
 
 # Helper functions for conversion
 def to_register_bag_command_dto(request: RegisterBagRequestDTO) -> "RegisterBagCommand":
     """Convert Request DTO to Command"""
     from application.commands.register_bag import RegisterBagCommand
     from domain.bag_dispatch.value_objects import (
-        BagBarcode, ExchangeCenterCode, TransportType,
-        SealNumber, CorrelationId, IdempotencyKey,
+        BagBarcode,
+        ExchangeCenterCode,
+        TransportType,
+        SealNumber,
+        CorrelationId,
+        IdempotencyKey,
     )
     from datetime import datetime
 
@@ -110,7 +149,7 @@ def to_register_bag_command_dto(request: RegisterBagRequestDTO) -> "RegisterBagC
         dest_center=ExchangeCenterCode(request.dest_center),
         seal_number=SealNumber(request.seal_number),
         transport_type=TransportType.from_string(request.transport_type),
-        closed_at_utc=datetime.fromisoformat(request.closed_at_utc.replace('Z', '+00:00')),
+        closed_at_utc=datetime.fromisoformat(request.closed_at_utc.replace("Z", "+00:00")),
         correlation_id=CorrelationId(request.correlation_id),
         idempotency_key=IdempotencyKey(request.idempotency_key),
         created_by_device_id=request.created_by_device_id,
@@ -118,13 +157,16 @@ def to_register_bag_command_dto(request: RegisterBagRequestDTO) -> "RegisterBagC
 
 
 def to_register_dispatch_command_dto(
-    request: RegisterDispatchRequestDTO
+    request: RegisterDispatchRequestDTO,
 ) -> "RegisterDispatchCommand":
     """Convert Request DTO to Command"""
     from application.commands.register_dispatch import RegisterDispatchCommand
     from domain.bag_dispatch.value_objects import (
-        DispatchId, ExchangeCenterCode, TransportType,
-        CorrelationId, IdempotencyKey,
+        DispatchId,
+        ExchangeCenterCode,
+        TransportType,
+        CorrelationId,
+        IdempotencyKey,
     )
     from datetime import datetime
 
@@ -135,7 +177,7 @@ def to_register_dispatch_command_dto(
         dest_center=ExchangeCenterCode(request.dest_center),
         transport_type=TransportType.from_string(request.transport_type),
         scheduled_at_utc=datetime.fromisoformat(
-            request.scheduled_at_utc.replace('Z', '+00:00')
+            request.scheduled_at_utc.replace("Z", "+00:00")
         ),
         correlation_id=CorrelationId(request.correlation_id),
         idempotency_key=IdempotencyKey(request.idempotency_key),
@@ -143,11 +185,9 @@ def to_register_dispatch_command_dto(
 
 
 def to_register_bag_response_dto(
-    result: "RegisterBagResult"
+    result: "RegisterBagResult",
 ) -> RegisterBagResponseDTO:
     """Convert Result to Response DTO"""
-    from application.commands.register_bag import RegisterBagResult
-
     return RegisterBagResponseDTO(
         success=result.success,
         bag_barcode=str(result.bag_barcode) if result.bag_barcode else None,
@@ -157,11 +197,9 @@ def to_register_bag_response_dto(
 
 
 def to_register_dispatch_response_dto(
-    result: "RegisterDispatchResult"
+    result: "RegisterDispatchResult",
 ) -> RegisterDispatchResponseDTO:
     """Convert Result to Response DTO"""
-    from application.commands.register_dispatch import RegisterDispatchResult
-
     return RegisterDispatchResponseDTO(
         success=result.success,
         dispatch_id=str(result.dispatch_id) if result.dispatch_id else None,

@@ -181,7 +181,7 @@ for record in result.report.records:
 ```text
 Execution report: CPS-86 Operational Result Storage Flow
 01. [PASS] TC-01: Successful operation result stored
-    payloadSent: {"method": "POST", "url": "http://192.168.20.196:5080/api/edge/operational-results", "payload": {"correlationId": "corr-86-success-001", "parcelBarcode": "860000000000000000000001", "callResult": "RegisterInbound_Success", "success": true, "errorCode": null, "errorMessage": null, "calledAtUtc": "2025-01-15T10:00:00Z", "respondedAtUtc": "2025-01-15T10:00:01Z", "attempts": 1, "finalStatus": "Success"}, "headers": {"Content-Type": "application/json", "X-Correlation-ID": "...", "Authorization": "<redacted>"}}
+    payloadSent: {"method": "POST", "url": "http://localhost:5080/api/edge/operational-results", "payload": {"correlationId": "corr-86-success-001", "parcelBarcode": "860000000000000000000001", "callResult": "RegisterInbound_Success", "success": true, "errorCode": null, "errorMessage": null, "calledAtUtc": "2025-01-15T10:00:00Z", "respondedAtUtc": "2025-01-15T10:00:01Z", "attempts": 1, "finalStatus": "Success"}, "headers": {"Content-Type": "application/json", "X-Correlation-ID": "...", "Authorization": "<redacted>"}}
     responseReceived: {"statusCode": 200, "body": {}}
     expected: PASS
 

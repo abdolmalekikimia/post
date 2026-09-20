@@ -23,7 +23,7 @@ class FakeResponse:
 class SimulatedPresignedUrlHttpClient:
     """Simulates Core REST API for CPS-80 Pre-signed URL generation (Real Core Contract)."""
     def __init__(self, should_fail_on: Optional[str] = None):
-        self.base_url = "http://192.168.20.196:5080"
+        self.base_url = "http://localhost:5080"
         self.last_exchange: dict[str, Any] = {}
         self.should_fail_on = should_fail_on
 
@@ -56,7 +56,7 @@ class SimulatedPresignedUrlHttpClient:
         else:
             object_key = f"parcels/2025/03/10/{barcode}_top.jpg"
             upload_url = (
-                f"http://192.168.20.196:9000/parcel-images/{object_key}"
+                f"http://localhost:9000/parcel-images/{object_key}"
                 f"?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=300&X-Amz-Date=20250310T120000Z"
             )
             # Real Core contract: PresignedUrlResponse
@@ -140,12 +140,61 @@ def test_cps80_flow_failure_execution_prints_payload_and_response():
     """
     Verify that upon failure, exact payloadSent, responseReceived, and error details are printed.
     """
+    # Use a fixed barcode that matches the failure trigger
+    from flows.images.cps80_presigned_url_flow import PresignedUrlCase
+    custom_cases = (
+        PresignedUrlCase(
+            case_id="TC-01",
+            title="Presigned URL Generation - Valid time-limited upload URL issued",
+            category="success_issue",
+            parcel_barcode="590001234567890123456789",  # Matches should_fail_on
+            expected_core_status=200,
+        ),
+        PresignedUrlCase(
+            case_id="TC-02",
+            title="Direct Image Upload - Upload parcel image directly to Object Storage via HTTP PUT",
+            category="direct_upload",
+            parcel_barcode="590001234567890123456789",
+            expected_core_status=200,
+        ),
+        PresignedUrlCase(
+            case_id="TC-03",
+            title="URL Expiry Enforcement - Storage rejects upload when URL signature expires",
+            category="expired_upload",
+            parcel_barcode="590001234567890123456789",
+            expected_core_status=200,
+        ),
+        PresignedUrlCase(
+            case_id="TC-04",
+            title="Unauthorized Access Rejection - Request without valid JWT is rejected",
+            category="unauthorized",
+            parcel_barcode="590001234567890123456789",
+            auth_token=None,
+            expected_core_status=401,
+        ),
+        PresignedUrlCase(
+            case_id="TC-05",
+            title="Infrastructure Security - No credentials, secrets, or internal paths leaked",
+            category="security_leakage",
+            parcel_barcode="590001234567890123456789",
+            expected_core_status=200,
+        ),
+        PresignedUrlCase(
+            case_id="TC-06",
+            title="Provider Interchangeability - S3-compatible contract maintained regardless of backend",
+            category="provider_agnostic",
+            parcel_barcode="590001234567890123456789",
+            expected_core_status=200,
+        ),
+    )
+    
     client = SimulatedPresignedUrlHttpClient(should_fail_on="590001234567890123456789")
 
     with pytest.raises(FlowExecutionError) as exc_info:
         run_cps80_flow(
             client_factory=lambda: client,
             storage_uploader=simulated_storage_uploader,
+            cases=custom_cases,
         )
 
     report = exc_info.value.report
@@ -178,9 +227,16 @@ def test_cps80_cases_definitions():
     case_ids = [c.case_id for c in cases]
     assert case_ids == ["TC-01", "TC-02", "TC-03", "TC-04", "TC-05", "TC-06"]
     
-    # Verify new contract fields
+    # Verify new contract fields - now using dynamic barcodes
     tc1 = cases[0]
-    assert tc1.parcel_barcode == "590001234567890123456789"
+    assert len(tc1.parcel_barcode) == 24, "Parcel barcode should be 24 digits"
+    assert tc1.parcel_barcode.isdigit(), "Parcel barcode should be numeric"
+    assert tc1.parcel_barcode.startswith("590001"), "Should start with postal prefix"
     assert tc1.content_type == "image/jpeg"
     assert hasattr(tc1, 'auth_token')
     assert tc1.expected_core_status == 200
+
+    # Verify unauthorized case
+    tc4 = cases[3]
+    assert tc4.auth_token is None
+    assert tc4.expected_core_status == 401

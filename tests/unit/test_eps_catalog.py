@@ -13,6 +13,7 @@ def test_eps_catalog_contains_all_supported_eps_once():
         "EPS-53",
         "EPS-55",
         "EPS-60",
+        "EPS-62",
         "EPS-64",
         "EPS-66",
         "EPS-68",
@@ -24,6 +25,11 @@ def test_eps_catalog_contains_all_supported_eps_once():
         "EPS-87",
         "EPS-89",
         "EPS-113",
+        "EPS-117",
+        "EPS-135",
+        "EPS-151",
+        "EPS-181",
+        "EPS-201",
     ]
     assert len(eps_ids) == len(set(eps_ids))
 

@@ -12,11 +12,13 @@ from flows.bag.bag_flow_support import (
     PRECONDITION_STEPS,
     assign_parcel,
     close_bag,
+    flush_unbagged_parcels,
     register_parcel,
     setup_authenticated_context,
     wait_between_calls,
 )
 from utils.step_report import ExecutionReport, exchange_detail, run_step
+from utils.test_data import generated_barcode
 
 
 @dataclass(frozen=True)
@@ -52,12 +54,12 @@ def build_eps83_cases(
 
 
 def _fixture_barcode(run_settings: Settings, slot: int) -> str:
-    digits = "".join(ch for ch in os_barcode_prefix(run_settings) if ch.isdigit())
-    return f"{digits[:18].ljust(18, '0')}{slot:06d}"
+    prefix = os_barcode_prefix(run_settings)
+    return generated_barcode(prefix, run_settings, slot)
 
 
 def os_barcode_prefix(run_settings: Settings) -> str:
-    return getattr(run_settings, "eps83_barcode_prefix", "830000000000000000")
+    return getattr(run_settings, "eps83_barcode_prefix", "830001")
 
 
 def _case_chute(run_settings: Settings, case: Eps83Case) -> str:
@@ -96,7 +98,8 @@ def run_eps83_flow(
     report.register(*PRECONDITION_STEPS)
 
     context = setup_authenticated_context(report, run_settings, "EPS-83")
-    destination = getattr(run_settings, "eps83_destination_code", "11369")
+    destination = getattr(run_settings, "eps83_destination_code", "31417")
+    flush_unbagged_parcels(context.device, run_settings, (destination,))
     responses: dict[str, Any] = {}
 
     try:
@@ -229,6 +232,7 @@ def run_eps83_flow(
                         response,
                         expected_status=0,
                         expected_result_type="AllParcelsFailed",
+                        expected_counts={"n": 0, "p": 0, "m": 0, "q": 0},
                         expect_bag_identity_absent=True,
                         operation=f"EPS-83 {case.case_id}",
                     )
@@ -332,6 +336,7 @@ def run_eps83_flow(
                     response,
                     expected_status=0,
                     expected_result_type="Completed",
+                    expected_counts={"n": 1, "p": 0, "m": 0, "q": 0},
                     expect_bag_identity=True,
                     operation=f"EPS-83 {case.case_id}",
                 )
@@ -379,6 +384,7 @@ def run_eps83_flow(
                     response,
                     expected_status=0,
                     expected_result_type="Completed",
+                    expected_counts={"n": 1, "p": 0, "m": 0, "q": 0},
                     expect_bag_identity=True,
                     operation=f"EPS-83 {case.case_id}",
                 )
@@ -424,6 +430,7 @@ def run_eps83_flow(
                     response,
                     expected_status=0,
                     expected_result_type="Completed",
+                    expected_counts={"n": 1, "p": 0, "m": 0, "q": 0},
                     expect_bag_identity=True,
                     operation=f"EPS-83 {case.case_id}",
                 )

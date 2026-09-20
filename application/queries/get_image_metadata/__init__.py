@@ -114,3 +114,7 @@ class PagedImageMetadataResult:
             page_size=paged.page_size,
             total_pages=paged.total_pages,
         )
+
+
+# Import Handler for easier access
+from application.queries.get_image_metadata.handler import GetImageMetadataHandler

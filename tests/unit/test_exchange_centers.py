@@ -12,7 +12,7 @@ def test_invalid_configured_exchange_center_is_replaced_with_valid_code():
 
 
 def test_configured_valid_exchange_center_is_preserved():
-    assert configured_or_random_exchange_center_code("71956") == "71956"
+    assert configured_or_random_exchange_center_code("59544") == "59544"
 
 
 def test_settings_keeps_flow_destinations_valid_and_distinct():

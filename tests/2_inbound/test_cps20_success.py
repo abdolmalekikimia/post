@@ -25,8 +25,8 @@ def test_cps20_success_scenarios():
     - TC-05: رهگیری درخواست و ردیابی Correlation-ID
     """
     _require_e2e()
-    if os.getenv("RUN_CPS20_SUCCESS", "0") != "1":
-        pytest.skip("Set RUN_CPS20_SUCCESS=1 to run CPS-20 success scenarios")
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_CPS20_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_CPS20_SUCCESS=1 to run CPS-20 success scenarios")
 
     all_cases = build_cps20_cases()
     success_cases = tuple(

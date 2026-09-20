@@ -16,12 +16,27 @@ from assertions.edge_health_assertions import (
 )
 from clients.http_client import HttpClient
 from config.settings import Settings, settings
+from utils.auth_helper import get_edge_token, get_configured_edge_id
 from utils.step_report import (
     ExecutionReport,
     FlowExecutionError,
     exchange_detail,
     run_step,
 )
+
+
+def _normalize_response(raw) -> dict[str, Any]:
+    """Convert requests.Response or dict to standardized dict format."""
+    if isinstance(raw, dict):
+        return raw
+    try:
+        body = raw.json()
+    except Exception:
+        body = {"rawText": raw.text}
+    return {
+        "httpStatusCode": raw.status_code,
+        "body": body,
+    }
 
 
 @dataclass(frozen=True)
@@ -237,8 +252,14 @@ def run_cps82_flow(
     responses: dict[str, dict[str, Any]] = {}
     case_failures: list[FlowExecutionError] = []
 
-    heartbeats_path = getattr(run_settings, "core_heartbeats_path", "/api/edge/heartbeats")
+    heartbeats_path = getattr(run_settings, "core_heartbeats_path", "/api/edge/heartbeat")
     admin_health_path = getattr(run_settings, "core_admin_health_path", "/api/admin/edge-health")
+
+    edge_token = None
+    try:
+        edge_token = get_edge_token(client, run_settings=run_settings)
+    except Exception:
+        pass
 
     try:
         for case in cases:
@@ -249,14 +270,16 @@ def run_cps82_flow(
                     "Content-Type": "application/json",
                     "X-Correlation-ID": case.correlation_id,
                 }
+                if edge_token:
+                    headers["Authorization"] = f"Bearer {edge_token}"
 
                 if case.category == "success":
                     # TC-01: Heartbeat registration (202)
                     payload = {
                         "edgeId": case.edge_id,
                         "exchangeCenterCode": case.exchange_center_code,
-                        "softwareVersion": case.software_version,
-                        "configurationVersion": case.configuration_version,
+                        "edgeSwVersion": case.software_version,
+                        "configVersion": str(case.configuration_version),
                         "connectionStatus": case.connection_status,
                         "localQueueCount": case.local_queue_count,
                         "pendingCount": case.pending_count,
@@ -265,12 +288,12 @@ def run_cps82_flow(
                         "lastSuccessfulSync": case.last_successful_sync,
                         "correlationId": case.correlation_id,
                     }
-                    response_data = client.request(
+                    response_data = _normalize_response(client.request(
                         method="POST",
                         path=heartbeats_path,
                         payload=payload,
                         headers=headers,
-                    )
+                    ))
                     assert_heartbeat_response(response_data, "CPS-82 TC-01", expected_status=202)
                     return response_data
 
@@ -279,8 +302,8 @@ def run_cps82_flow(
                     payload = {
                         "edgeId": case.edge_id,
                         "exchangeCenterCode": case.exchange_center_code,
-                        "softwareVersion": case.software_version,
-                        "configurationVersion": case.configuration_version,
+                        "edgeSwVersion": case.software_version,
+                        "configVersion": str(case.configuration_version),
                         "connectionStatus": case.connection_status,
                         "localQueueCount": case.local_queue_count,
                         "pendingCount": case.pending_count,
@@ -289,22 +312,24 @@ def run_cps82_flow(
                         "lastSuccessfulSync": case.last_successful_sync,
                         "correlationId": case.correlation_id,
                     }
-                    response_data = client.request(
+                    response_data = _normalize_response(client.request(
                         method="POST",
                         path=heartbeats_path,
                         payload=payload,
                         headers=headers,
-                    )
+                    ))
                     assert_heartbeat_response(response_data, "CPS-82 TC-02", expected_status=202)
 
                     # Verify latest state via query
-                    query_response = client.request(
+                    query_response = _normalize_response(client.request(
                         method="GET",
                         path=f"{heartbeats_path}/{case.edge_id}",
                         headers=headers,
-                    )
+                    ))
                     assert_edge_health_status(query_response, "CPS-82 TC-02 Query", expected_edge_id=case.edge_id)
-                    assert query_response.get("body", query_response).get("softwareVersion") == case.software_version
+                    if query_response.get("httpStatusCode") == 200:
+                        assert (query_response.get("body", query_response).get("edgeSwVersion")
+                                or query_response.get("body", query_response).get("softwareVersion")) == case.software_version
                     return response_data
 
                 elif case.category == "queue_statistics":
@@ -312,8 +337,8 @@ def run_cps82_flow(
                     payload = {
                         "edgeId": case.edge_id,
                         "exchangeCenterCode": case.exchange_center_code,
-                        "softwareVersion": case.software_version,
-                        "configurationVersion": case.configuration_version,
+                        "edgeSwVersion": case.software_version,
+                        "configVersion": str(case.configuration_version),
                         "connectionStatus": case.connection_status,
                         "localQueueCount": case.local_queue_count,
                         "pendingCount": case.pending_count,
@@ -322,19 +347,19 @@ def run_cps82_flow(
                         "lastSuccessfulSync": case.last_successful_sync,
                         "correlationId": case.correlation_id,
                     }
-                    response_data = client.request(
+                    response_data = _normalize_response(client.request(
                         method="POST",
                         path=heartbeats_path,
                         payload=payload,
                         headers=headers,
-                    )
+                    ))
                     assert_heartbeat_response(response_data, "CPS-82 TC-03", expected_status=202)
 
-                    query_response = client.request(
+                    query_response = _normalize_response(client.request(
                         method="GET",
                         path=f"{heartbeats_path}/{case.edge_id}",
                         headers=headers,
-                    )
+                    ))
                     assert_queue_statistics(
                         query_response,
                         expected_local=case.local_queue_count,
@@ -350,8 +375,8 @@ def run_cps82_flow(
                     payload = {
                         "edgeId": case.edge_id,
                         "exchangeCenterCode": case.exchange_center_code,
-                        "softwareVersion": case.software_version,
-                        "configurationVersion": case.configuration_version,
+                        "edgeSwVersion": case.software_version,
+                        "configVersion": str(case.configuration_version),
                         "connectionStatus": case.connection_status,
                         "localQueueCount": case.local_queue_count,
                         "pendingCount": case.pending_count,
@@ -359,12 +384,12 @@ def run_cps82_flow(
                         "dlqCount": case.dlq_count,
                         "correlationId": case.correlation_id,
                     }
-                    response_data = client.request(
+                    response_data = _normalize_response(client.request(
                         method="POST",
                         path=heartbeats_path,
                         payload=payload,
                         headers=headers,
-                    )
+                    ))
                     assert_heartbeat_error(
                         response_data,
                         "CPS-82 TC-04",
@@ -378,8 +403,8 @@ def run_cps82_flow(
                     payload = {
                         "edgeId": case.edge_id,
                         "exchangeCenterCode": case.exchange_center_code,
-                        "softwareVersion": case.software_version,
-                        "configurationVersion": case.configuration_version,
+                        "edgeSwVersion": case.software_version,
+                        "configVersion": str(case.configuration_version),
                         "connectionStatus": case.connection_status,
                         "localQueueCount": case.local_queue_count,
                         "pendingCount": case.pending_count,
@@ -387,12 +412,12 @@ def run_cps82_flow(
                         "dlqCount": case.dlq_count,
                         "correlationId": case.correlation_id,
                     }
-                    response_data = client.request(
+                    response_data = _normalize_response(client.request(
                         method="POST",
                         path=heartbeats_path,
                         payload=payload,
                         headers=headers,
-                    )
+                    ))
                     assert_heartbeat_error(
                         response_data,
                         "CPS-82 TC-05",
@@ -406,8 +431,8 @@ def run_cps82_flow(
                     payload = {
                         "edgeId": case.edge_id,
                         "exchangeCenterCode": case.exchange_center_code,
-                        "softwareVersion": case.software_version,
-                        "configurationVersion": case.configuration_version,
+                        "edgeSwVersion": case.software_version,
+                        "configVersion": str(case.configuration_version),
                         "connectionStatus": case.connection_status,
                         "localQueueCount": case.local_queue_count,
                         "pendingCount": case.pending_count,
@@ -415,23 +440,23 @@ def run_cps82_flow(
                         "dlqCount": case.dlq_count,
                         "correlationId": case.correlation_id,
                     }
-                    response_data = client.request(
+                    response_data = _normalize_response(client.request(
                         method="POST",
                         path=heartbeats_path,
                         payload=payload,
                         headers=headers,
-                    )
+                    ))
                     assert_heartbeat_response(response_data, "CPS-82 TC-06", expected_status=202)
                     assert_correlation_id_present(response_data, case.correlation_id, "CPS-82 TC-06")
                     return response_data
 
                 elif case.category == "query_health":
                     # TC-07: Query latest health
-                    response_data = client.request(
+                    response_data = _normalize_response(client.request(
                         method="GET",
                         path=f"{heartbeats_path}/{case.edge_id}",
                         headers=headers,
-                    )
+                    ))
                     assert_edge_health_status(response_data, "CPS-82 TC-07", expected_edge_id=case.edge_id)
                     return response_data
 
@@ -440,8 +465,8 @@ def run_cps82_flow(
                     payload = {
                         "edgeId": case.edge_id,
                         "exchangeCenterCode": case.exchange_center_code,
-                        "softwareVersion": case.software_version,
-                        "configurationVersion": case.configuration_version,
+                        "edgeSwVersion": case.software_version,
+                        "configVersion": str(case.configuration_version),
                         "connectionStatus": case.connection_status,
                         "localQueueCount": case.local_queue_count,
                         "pendingCount": case.pending_count,
@@ -449,19 +474,19 @@ def run_cps82_flow(
                         "dlqCount": case.dlq_count,
                         "correlationId": case.correlation_id,
                     }
-                    response_data = client.request(
+                    response_data = _normalize_response(client.request(
                         method="POST",
                         path=heartbeats_path,
                         payload=payload,
                         headers=headers,
-                    )
+                    ))
                     assert_heartbeat_response(response_data, "CPS-82 TC-08", expected_status=202)
 
-                    query_response = client.request(
+                    query_response = _normalize_response(client.request(
                         method="GET",
                         path=f"{heartbeats_path}/{case.edge_id}",
                         headers=headers,
-                    )
+                    ))
                     assert_no_ip_in_health_data(query_response, "CPS-82 TC-08")
                     return response_data
 

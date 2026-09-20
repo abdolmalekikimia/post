@@ -11,6 +11,8 @@ from interfaces.dto.bag_dispatch_dto import (
     RegisterDispatchResponseDTO,
     BagDTO,
     DispatchDTO,
+    PagedBagResponseDTO,
+    PagedDispatchResponseDTO,
     ErrorResponseDTO,
     to_register_bag_command_dto,
     to_register_dispatch_command_dto,
@@ -25,8 +27,16 @@ from application.commands.register_dispatch import (
     RegisterDispatchHandler,
     RegisterDispatchValidator,
 )
-from application.queries.get_bag import GetBagByBarcodeQuery, GetBagHandler
-from application.queries.get_dispatch import GetDispatchByIdQuery, GetDispatchHandler
+from application.queries.get_bag import (
+    GetBagByBarcodeQuery,
+    SearchBagsQuery,
+    GetBagHandler,
+)
+from application.queries.get_dispatch import (
+    GetDispatchByIdQuery,
+    SearchDispatchesQuery,
+    GetDispatchHandler,
+)
 from domain.bag_dispatch.exceptions import MetadataValidationError
 
 logger = logging.getLogger(__name__)
@@ -36,11 +46,13 @@ class BagDispatchController:
     """
     REST Controller for CPS-67 Bag/Dispatch Storage
 
-    Endpoints:
-    - POST   /api/edge/bags              -> Register Bag (202 Accepted)
-    - POST   /api/edge/dispatches        -> Register Dispatch (202 Accepted)
-    - GET    /api/edge/bags/{bagBarcode} -> Get Bag by Barcode
-    - GET    /api/edge/dispatches/{dispatchId} -> Get Dispatch by ID
+    Endpoints (6 endpoints):
+    1. POST   /api/edge/bags                      -> Register Bag (202 Accepted)
+    2. POST   /api/edge/dispatches                -> Register Dispatch (202 Accepted)
+    3. GET    /api/edge/bags/{bagBarcode}         -> Get Bag by Barcode (200 OK)
+    4. GET    /api/edge/dispatches/{dispatchId}   -> Get Dispatch by ID (200 OK)
+    5. GET    /api/edge/bags                      -> Search Bags with pagination (200 OK)
+    6. GET    /api/edge/dispatches                -> Search Dispatches with pagination (200 OK)
     """
 
     def __init__(
@@ -55,11 +67,11 @@ class BagDispatchController:
         self.bag_query_handler = bag_query_handler
         self.dispatch_query_handler = dispatch_query_handler
 
-    # ============ Commands ============
+    # ============ 1. POST /api/edge/bags ============
 
     async def register_bag(
         self,
-        request: RegisterBagRequestDTO
+        request: RegisterBagRequestDTO,
     ) -> tuple[int, RegisterBagResponseDTO | ErrorResponseDTO]:
         """
         POST /api/edge/bags
@@ -101,6 +113,13 @@ class BagDispatchController:
                 detail=str(e),
                 instance="/api/edge/bags",
             )
+        except ValueError as e:
+            return 400, ErrorResponseDTO(
+                status=400,
+                title="Invalid Input",
+                detail=str(e),
+                instance="/api/edge/bags",
+            )
         except Exception as e:
             logger.exception("Unexpected error in register_bag")
             return 500, ErrorResponseDTO(
@@ -110,9 +129,11 @@ class BagDispatchController:
                 instance="/api/edge/bags",
             )
 
+    # ============ 2. POST /api/edge/dispatches ============
+
     async def register_dispatch(
         self,
-        request: RegisterDispatchRequestDTO
+        request: RegisterDispatchRequestDTO,
     ) -> tuple[int, RegisterDispatchResponseDTO | ErrorResponseDTO]:
         """
         POST /api/edge/dispatches
@@ -154,6 +175,13 @@ class BagDispatchController:
                 detail=str(e),
                 instance="/api/edge/dispatches",
             )
+        except ValueError as e:
+            return 400, ErrorResponseDTO(
+                status=400,
+                title="Invalid Input",
+                detail=str(e),
+                instance="/api/edge/dispatches",
+            )
         except Exception as e:
             logger.exception("Unexpected error in register_dispatch")
             return 500, ErrorResponseDTO(
@@ -163,11 +191,11 @@ class BagDispatchController:
                 instance="/api/edge/dispatches",
             )
 
-    # ============ Queries ============
+    # ============ 3. GET /api/edge/bags/{bagBarcode} ============
 
     async def get_by_bag_barcode(
         self,
-        bag_barcode: str
+        bag_barcode: str,
     ) -> tuple[int, BagDTO | ErrorResponseDTO]:
         """GET /api/edge/bags/{bagBarcode}"""
         try:
@@ -189,10 +217,20 @@ class BagDispatchController:
                 detail=str(e),
                 instance=f"/api/edge/bags/{bag_barcode}",
             )
+        except Exception as e:
+            logger.exception("Unexpected error in get_by_bag_barcode")
+            return 500, ErrorResponseDTO(
+                status=500,
+                title="Internal Server Error",
+                detail="An unexpected error occurred",
+                instance=f"/api/edge/bags/{bag_barcode}",
+            )
+
+    # ============ 4. GET /api/edge/dispatches/{dispatchId} ============
 
     async def get_by_dispatch_id(
         self,
-        dispatch_id: str
+        dispatch_id: str,
     ) -> tuple[int, DispatchDTO | ErrorResponseDTO]:
         """GET /api/edge/dispatches/{dispatchId}"""
         try:
@@ -213,6 +251,116 @@ class BagDispatchController:
                 title="Invalid Dispatch ID Format",
                 detail=str(e),
                 instance=f"/api/edge/dispatches/{dispatch_id}",
+            )
+        except Exception as e:
+            logger.exception("Unexpected error in get_by_dispatch_id")
+            return 500, ErrorResponseDTO(
+                status=500,
+                title="Internal Server Error",
+                detail="An unexpected error occurred",
+                instance=f"/api/edge/dispatches/{dispatch_id}",
+            )
+
+    # ============ 5. GET /api/edge/bags (Search) ============
+
+    async def search_bags(
+        self,
+        bag_barcode: Optional[str] = None,
+        origin_center: Optional[str] = None,
+        dest_center: Optional[str] = None,
+        transport_type: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[int, PagedBagResponseDTO | ErrorResponseDTO]:
+        """GET /api/edge/bags (Search with filters and pagination)"""
+        try:
+            query = SearchBagsQuery(
+                bag_barcode=bag_barcode,
+                origin_center=origin_center,
+                dest_center=dest_center,
+                transport_type=transport_type,
+                correlation_id=correlation_id,
+                date_from=date_from,
+                date_to=date_to,
+                page=page,
+                page_size=page_size,
+            )
+            paged = self.bag_query_handler.handle_search(query)
+            return 200, PagedBagResponseDTO(
+                items=paged.items,
+                total_count=paged.total_count,
+                page=paged.page,
+                page_size=paged.page_size,
+                total_pages=paged.total_pages,
+            )
+        except ValueError as e:
+            return 400, ErrorResponseDTO(
+                status=400,
+                title="Invalid Search Parameters",
+                detail=str(e),
+                instance="/api/edge/bags",
+            )
+        except Exception as e:
+            logger.exception("Unexpected error in search_bags")
+            return 500, ErrorResponseDTO(
+                status=500,
+                title="Internal Server Error",
+                detail="An unexpected error occurred",
+                instance="/api/edge/bags",
+            )
+
+    # ============ 6. GET /api/edge/dispatches (Search) ============
+
+    async def search_dispatches(
+        self,
+        dispatch_id: Optional[str] = None,
+        origin_center: Optional[str] = None,
+        dest_center: Optional[str] = None,
+        transport_type: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[int, PagedDispatchResponseDTO | ErrorResponseDTO]:
+        """GET /api/edge/dispatches (Search with filters and pagination)"""
+        try:
+            query = SearchDispatchesQuery(
+                dispatch_id=dispatch_id,
+                origin_center=origin_center,
+                dest_center=dest_center,
+                transport_type=transport_type,
+                correlation_id=correlation_id,
+                date_from=date_from,
+                date_to=date_to,
+                page=page,
+                page_size=page_size,
+            )
+            paged = self.dispatch_query_handler.handle_search(query)
+            return 200, PagedDispatchResponseDTO(
+                items=paged.items,
+                total_count=paged.total_count,
+                page=paged.page,
+                page_size=paged.page_size,
+                total_pages=paged.total_pages,
+            )
+        except ValueError as e:
+            return 400, ErrorResponseDTO(
+                status=400,
+                title="Invalid Search Parameters",
+                detail=str(e),
+                instance="/api/edge/dispatches",
+            )
+        except Exception as e:
+            logger.exception("Unexpected error in search_dispatches")
+            return 500, ErrorResponseDTO(
+                status=500,
+                title="Internal Server Error",
+                detail="An unexpected error occurred",
+                instance="/api/edge/dispatches",
             )
 
     # ============ Error Mapping ============

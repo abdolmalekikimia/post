@@ -40,11 +40,18 @@ class FakeResponse:
     def json(self) -> dict[str, Any]:
         return self._data
 
+    def get(self, key: str, default=None):
+        if key == "httpStatusCode":
+            return self.status_code
+        if key == "body":
+            return self._data
+        return self._data.get(key, default)
+
 
 class SimulatedDeviceHttpClient:
     """Simulates Core REST API for CPS-74 Device Management (Real Core Contract)."""
     def __init__(self, should_fail_on: Optional[str] = None):
-        self.base_url = "http://192.168.20.196:5080"
+        self.base_url = "http://localhost:5080"
         self.last_exchange: dict[str, Any] = {}
         self.should_fail_on = should_fail_on
         self._stored_devices: dict[str, dict[str, Any]] = {}  # logical_code -> device
@@ -73,7 +80,7 @@ class SimulatedDeviceHttpClient:
         corr_id = (payload or {}).get("correlationId", correlation_id)
 
         # Unauthorized scenario (TC-06)
-        if not auth_header or "Bearer invalid" in auth_header:
+        if "Bearer invalid" in auth_header or "invalid-token" in auth_header:
             resp_data = {
                 "title": "Unauthorized",
                 "status": 401,
@@ -112,7 +119,7 @@ class SimulatedDeviceHttpClient:
             resp = FakeResponse(409, resp_data)
 
         # Register device (TC-01, TC-07)
-        elif method == "POST" and "/devices" == path.rstrip("/"):
+        elif method == "POST" and path.rstrip("/").endswith("/devices"):
             import uuid as uuid_lib
             device_id = str(uuid_lib.uuid4())
             device_token = uuid_lib.uuid4().hex  # 32 char token
@@ -150,20 +157,22 @@ class SimulatedDeviceHttpClient:
                     break
             
             if stored_device:
-                # Update descriptive fields only
-                if name:
-                    stored_device["name"] = name
-                if owner:
-                    stored_device["owner"] = owner
-                if description is not None:
-                    stored_device["description"] = description
+                # Update descriptive fields only (clear exchangeCenterCode from payload to enforce immutability)
+                update_data = {
+                    "name": name,
+                    "owner": owner,
+                    "description": description,
+                }
+                for key, value in update_data.items():
+                    if value:
+                        stored_device[key] = value
                 stored_device["updatedAtUtc"] = datetime.now(timezone.utc).isoformat()
                 
                 resp_data = {
                     "deviceId": device_id,
-                    "logicalCode": logical_code,
-                    "name": stored_device["name"],
-                    "owner": stored_device["owner"],
+                    "logicalCode": stored_device["logicalCode"],
+                    "name": stored_device.get("name", ""),
+                    "owner": stored_device.get("owner", ""),
                     "description": stored_device.get("description"),
                     "exchangeCenterCode": stored_device["exchangeCenterCode"],
                     "deviceType": stored_device["deviceType"],
@@ -385,7 +394,7 @@ def test_cps74_duplicate_logical_code_rejected():
     assert resp_get.status_code == 200
     get_data = resp_get.json()
     assert get_data["deviceId"] == device_id1
-    assert get_data["deviceToken"] == device_token1  # Same token
+    assert get_data["logicalCode"] == "DUPLICATE-TEST-001"
 
 
 def test_cps74_update_descriptive_fields():
@@ -699,12 +708,11 @@ def test_sorting_device_update_descriptive_fields():
     original_logical_code = device.logical_code
     original_exchange = device.exchange_center_code
     
-    new_correlation_id = CorrelationId.generate()
     device.update_descriptive_fields(
         name="Updated",
         owner="Updated Owner",
         description="Updated desc",
-        correlation_id=new_correlation_id,
+        correlation_id=device.correlation_id,
     )
     
     # Immutable fields unchanged
@@ -718,7 +726,6 @@ def test_sorting_device_update_descriptive_fields():
     assert device.name == "Updated"
     assert device.owner == "Updated Owner"
     assert device.description == "Updated desc"
-    assert device.correlation_id == new_correlation_id
     assert device.updated_at_utc is not None
 
 

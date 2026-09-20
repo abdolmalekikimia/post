@@ -9,6 +9,7 @@ from typing import Optional
 class BagDispatchConfig:
     """
     Configuration for CPS-67 Bag/Dispatch Storage
+    All values read from environment variables.
     """
     # Database
     database_connection_string: str = os.getenv(
@@ -38,6 +39,25 @@ class BagDispatchConfig:
     )
     kafka_client_id: str = os.getenv(
         "BAG_DISPATCH_KAFKA_CLIENT_ID", "bag-dispatch-service"
+    )
+
+    # Endpoints & Service
+    core_bag_path: str = os.getenv(
+        "CORE_BAG_DISPATCH_PATH", "/api/edge/bags"
+    )
+    core_dispatch_path: str = os.getenv(
+        "CORE_COLLECTION_DISPATCH_PATH", "/api/edge/dispatches"
+    )
+
+    # Defaults
+    default_origin_center: str = os.getenv(
+        "CPS67_ORIGIN_CENTER", "59544"
+    )
+    default_dest_center: str = os.getenv(
+        "CPS67_DEST_CENTER", "71956"
+    )
+    default_transport_type: str = os.getenv(
+        "CPS67_TRANSPORT_TYPE", "road"
     )
 
     # Feature Flags

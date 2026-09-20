@@ -26,6 +26,8 @@ def _require_e2e() -> None:
 @pytest.mark.eps76_success
 def test_packing_eps76_success_contract():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS76_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS76_SUCCESS=1 to run EPS-76 success scenario")
     result = run_packing_success_flow("EPS-76")
     assert result.close_response["payload"]["resultType"] == "Completed"
 
@@ -37,6 +39,8 @@ def test_packing_eps76_success_contract():
 @pytest.mark.eps79_success
 def test_packing_eps79_success_contract():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS79_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS79_SUCCESS=1 to run EPS-79 success scenario")
     result = run_packing_success_flow("EPS-79")
     assert result.close_response["payload"]["resultType"] == "Completed"
 
@@ -48,6 +52,8 @@ def test_packing_eps79_success_contract():
 @pytest.mark.eps87_success
 def test_packing_eps87_success_contract():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS87_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS87_SUCCESS=1 to run EPS-87 success scenario")
     result = run_packing_success_flow("EPS-87")
     assert result.close_response["payload"]["resultType"] == "Completed"
 
@@ -59,6 +65,8 @@ def test_packing_eps87_success_contract():
 @pytest.mark.eps89_success
 def test_packing_eps89_success_contract():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS89_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS89_SUCCESS=1 to run EPS-89 success scenario")
     result = run_packing_success_flow("EPS-89")
     assert result.close_response["payload"]["resultType"] == "Completed"
 
@@ -70,10 +78,11 @@ def test_packing_eps89_success_contract():
 @pytest.mark.packing_negative
 def test_packing_negative_scenarios():
     _require_e2e()
-    if os.getenv("RUN_PACKING_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_PACKING_NEGATIVE=1 to run packing negative scenarios")
-    result = run_packing_negative_flow()
-    assert result.responses
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_PACKING_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_PACKING_NEGATIVE=1 to run packing negative scenarios")
+    for eps in ("EPS-76", "EPS-79", "EPS-87", "EPS-89"):
+        result = run_packing_negative_flow(eps)
+        assert result.responses, f"{eps} negative flow returned no responses"
 
 
 @pytest.mark.catalog
@@ -92,8 +101,8 @@ def test_packing_catalog_eps_distribution():
 @pytest.mark.packing
 def test_eps83_label_and_bag_success_scenarios():
     _require_e2e()
-    if os.getenv("RUN_EPS83_SUCCESS", "0") != "1":
-        pytest.skip("Set RUN_EPS83_SUCCESS=1 to run EPS-83 success scenarios")
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS83_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS83_SUCCESS=1 to run EPS-83 success scenarios")
     selected = os.getenv("EPS83_CASE", "all").lower()
     all_cases = build_eps83_cases()
     positive_categories = (
@@ -116,8 +125,8 @@ def test_eps83_label_and_bag_success_scenarios():
 @pytest.mark.packing
 def test_eps83_negative_scenarios():
     _require_e2e()
-    if os.getenv("RUN_EPS83_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_EPS83_NEGATIVE=1 to run EPS-83 negative scenarios")
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_EPS83_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_EPS83_NEGATIVE=1 to run EPS-83 negative scenarios")
     selected = os.getenv("EPS83_CASE", "all").lower()
     all_cases = build_eps83_cases()
     negative_categories = ("no_eligible", "all_failed", "disconnection")

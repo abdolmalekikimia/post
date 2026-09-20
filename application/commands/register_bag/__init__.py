@@ -58,3 +58,8 @@ class RegisterBagResult:
     success: bool = True
     error_code: Optional[str] = None
     error_message: Optional[str] = None
+
+
+# Import Handler and Validator for easier access
+from application.commands.register_bag.handler import RegisterBagHandler
+from application.commands.register_bag.validator import RegisterBagValidator

@@ -42,5 +42,5 @@ def test_eps53_discrepancy_cases_send_non_default_measurements():
 
     assert physical_attributes == {
         "weightGrams": 999,
-        "dimensions": {"lengthMm": 300, "widthMm": 200, "heightMm": 100},
+        "dimensions": {"lengthCm": 30, "widthCm": 20, "heightCm": 10},
     }

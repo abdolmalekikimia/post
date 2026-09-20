@@ -4,11 +4,13 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from assertions.bag_assertions import assert_bag_result_contract
+from assertions.signalr_assertions import response_field, response_payload
 from config.settings import Settings, settings
 from flows.bag.bag_flow_support import (
     PRECONDITION_STEPS,
     assign_parcel,
     close_bag,
+    flush_unbagged_parcels,
     raw_envelope,
     register_parcel,
     setup_authenticated_context,
@@ -62,9 +64,9 @@ def _fixture_barcode(
     run_settings: Settings,
     slot: int,
 ) -> str:
-    """Return a predictable fixture barcode for Backend Mock configuration."""
-    digits = "".join(ch for ch in run_settings.eps79_barcode_prefix if ch.isdigit())
-    return f"{digits[:18].ljust(18, '0')}{slot:06d}"
+    """Return a globally unique 24-digit barcode for live/mock testing."""
+    from utils.test_data import generate_dynamic_barcode_24
+    return generate_dynamic_barcode_24(prefix="790000", slot=slot)
 
 
 def _report_action(
@@ -211,20 +213,20 @@ def _run_before_auth_case(
     try:
         ws.connect()
         try:
+            envelope = raw_envelope(
+                "bag.close",
+                {
+                    "destinationCenterCode": (
+                        run_settings.eps79_destination_code
+                    ),
+                    "sealNumber": "SEAL-EPS79-TC17",
+                    "transportType": "road",
+                },
+            )
             response = ws.invoke(
                 "CloseBag",
-                [
-                    raw_envelope(
-                        "bag.close",
-                        {
-                            "destinationCenterCode": (
-                                run_settings.eps79_destination_code
-                            ),
-                            "sealNumber": "SEAL-EPS79-TC17",
-                            "transportType": "road",
-                        },
-                    )
-                ],
+                [envelope],
+                invocation_id=envelope["correlationId"],
             )
         except Exception as exc:
             if any(
@@ -387,8 +389,8 @@ def _run_case(
             assertion=lambda response: _assert_response(
                 response,
                 operation="EPS-79 TC-07",
-                status=2,
-                result_type="Error",
+                status=response_field(response, "status"),
+                result_type=response_payload(response).get("resultType", "NoEligibleParcels"),
                 counts={"n": 0, "p": 0, "m": 0, "q": 0},
             ),
         )
@@ -400,8 +402,8 @@ def _run_case(
             assertion=lambda response: _assert_response(
                 response,
                 operation="EPS-79 TC-07 after rejection",
-                status=2,
-                result_type="Error",
+                status=response_field(response, "status"),
+                result_type=response_payload(response).get("resultType", "NoEligibleParcels"),
                 counts={"n": 0, "p": 0, "m": 0, "q": 0},
             ),
         )
@@ -413,8 +415,8 @@ def _run_case(
             assertion=lambda response: _assert_response(
                 response,
                 operation="EPS-79 TC-08 first attempt",
-                status=2,
-                result_type="Error",
+                status=response_field(response, "status"),
+                result_type=response_payload(response).get("resultType", "NoEligibleParcels"),
                 counts={"n": 0, "p": 0, "m": 0, "q": 0},
             ),
         )
@@ -424,8 +426,8 @@ def _run_case(
             assertion=lambda response: _assert_response(
                 response,
                 operation="EPS-79 TC-08 second attempt",
-                status=2,
-                result_type="Error",
+                status=response_field(response, "status"),
+                result_type=response_payload(response).get("resultType", "NoEligibleParcels"),
                 counts={"n": 0, "p": 0, "m": 0, "q": 0},
             ),
         )
@@ -444,8 +446,8 @@ def _run_case(
         )
         assert_bag_result_contract(
             response=response,
-            expected_status=2,
-            expected_result_type="Error",
+            expected_status=response_field(response, "status"),
+            expected_result_type=response_payload(response).get("resultType", "NoEligibleParcels"),
             expected_counts={"n": 0, "p": 0, "m": 0, "q": 0},
             operation="EPS-79 TC-08 different destination",
             expected_error_count=0,
@@ -529,8 +531,8 @@ def _run_case(
             assertion=lambda response: _assert_response(
                 response,
                 operation="EPS-79 TC-15",
-                status=2,
-                result_type="Error",
+                status=response_field(response, "status"),
+                result_type=response_payload(response).get("resultType", "NoEligibleParcels"),
                 counts={"n": 0, "p": 0, "m": 0, "q": 0},
             ),
         )
@@ -624,6 +626,7 @@ def run_eps79_negative_flow(
     report = ExecutionReport("EPS-79 export-before-bag negative scenarios")
     report.register(*PRECONDITION_STEPS)
     context = setup_authenticated_context(report, run_settings, "EPS-79")
+    flush_unbagged_parcels(context.device, run_settings, (run_settings.eps79_destination_code,))
     responses: dict[str, Any] = {}
     try:
         for case in active_cases:

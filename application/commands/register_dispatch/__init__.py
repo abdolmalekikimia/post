@@ -52,3 +52,8 @@ class RegisterDispatchResult:
     success: bool = True
     error_code: Optional[str] = None
     error_message: Optional[str] = None
+
+
+# Import Handler and Validator for easier access
+from application.commands.register_dispatch.handler import RegisterDispatchHandler
+from application.commands.register_dispatch.validator import RegisterDispatchValidator

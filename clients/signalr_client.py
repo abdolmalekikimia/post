@@ -1,4 +1,5 @@
 import json
+import ssl
 import time
 from json import JSONDecodeError
 from types import MappingProxyType
@@ -53,14 +54,22 @@ class DeviceWebSocketClient:
             "webSocketUrl": self.ws_url,
             "request": protocol,
         }
-        try:
-            self._socket = create_connection(self.ws_url, timeout=self.timeout)
-            self._send_frame(protocol)
-            handshake_frames = self._receive_handshake()
-        except Exception as exc:
-            self.last_exchange["error"] = f"{type(exc).__name__}: {exc}"
-            self.close()
-            raise
+        for attempt in range(6):
+            try:
+                sslopt = {}
+                if self.ws_url.startswith("wss://"):
+                    sslopt = {"cert_reqs": ssl.CERT_NONE, "check_hostname": False}
+                self._socket = create_connection(self.ws_url, timeout=self.timeout, sslopt=sslopt)
+                self._send_frame(protocol)
+                handshake_frames = self._receive_handshake()
+                break
+            except Exception as exc:
+                if "429" in str(exc) and attempt < 5:
+                    time.sleep(10.0)
+                    continue
+                self.last_exchange["error"] = f"{type(exc).__name__}: {exc}"
+                self.close()
+                raise
 
         details = {
             "webSocketUrl": self.ws_url,

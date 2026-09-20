@@ -23,7 +23,7 @@ class FakeResponse:
 class SimulatedBagDispatchHttpClient:
     """Simulates Core REST API for CPS-67 Bag/Dispatch Storage (Real Core Contract)."""
     def __init__(self, should_fail_on: Optional[str] = None):
-        self.base_url = "http://192.168.20.196:5080"
+        self.base_url = "http://localhost:5080"
         self.last_exchange: dict[str, Any] = {}
         self.should_fail_on = should_fail_on
         self._stored_bags: dict[str, Any] = {}

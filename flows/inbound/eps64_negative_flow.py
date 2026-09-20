@@ -11,7 +11,7 @@ from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
 from services.admin_service import AdminService
 from services.device_service import DeviceService
-from utils.step_report import ExecutionReport, exchange_detail, run_step
+from utils.step_report import ExecutionReport, FlowExecutionError, exchange_detail, run_step
 
 
 @dataclass(frozen=True)
@@ -159,8 +159,8 @@ def run_eps64_negative_flow(
     admin = AdminService(rest_client)
     admin_token = run_step(
         report,
-        "1. [PRECONDITION] Admin Login",
-        lambda: admin.login(
+        "1. [PRECONDITION] Admin Login - POST /admin/login",
+        lambda: admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         ),
@@ -216,6 +216,7 @@ def run_eps64_negative_flow(
         )
 
         responses: dict[str, dict[str, Any]] = {}
+        case_failures: list[FlowExecutionError] = []
         for index, case in enumerate(active_cases, start=5):
             _wait(run_settings)
             step_name = f"{index}. [EPS-64] RegisterInbound - {case.name}"
@@ -233,22 +234,29 @@ def run_eps64_negative_flow(
                 )
                 return _assert_negative_response(response, case)
 
-            responses[case.name] = run_step(
-                report,
-                step_name,
-                register_case,
-                detail=lambda _: exchange_detail(ws.last_exchange),
-                error_detail=lambda error: {
-                    "error": f"{type(error).__name__}: {error}",
-                    **exchange_detail(ws.last_exchange),
-                },
-                success_message=f"سناریوی Negative EPS-64/{case.name} نتیجهٔ مورد انتظار را داد.",
-            )
+            try:
+                responses[case.name] = run_step(
+                    report,
+                    step_name,
+                    register_case,
+                    detail=lambda _: exchange_detail(ws.last_exchange),
+                    error_detail=lambda error: {
+                        "error": f"{type(error).__name__}: {error}",
+                        **exchange_detail(ws.last_exchange),
+                    },
+                    success_message=f"سناریوی Negative EPS-64/{case.name} نتیجهٔ مورد انتظار را داد.",
+                    mark_remaining_on_error=False,
+                )
+            except FlowExecutionError as error:
+                case_failures.append(error)
+                responses[case.name] = {"error": str(error)}
     finally:
         ws.close()
         rest_client.close()
 
     report.print()
+    if case_failures:
+        raise case_failures[0]
     return Eps64NegativeResult(responses=responses, report=report)
 
 

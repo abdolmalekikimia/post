@@ -125,9 +125,9 @@ def run_eps68_negative_flow(
                     physical_attributes={
                         "weightGrams": 500,
                         "dimensions": {
-                            "lengthMm": 300,
-                            "widthMm": 200,
-                            "heightMm": 100,
+                            "lengthCm": 30,
+                            "widthCm": 20,
+                            "heightCm": 10,
                         },
                     },
                     parcel_type=None,

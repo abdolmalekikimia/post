@@ -30,6 +30,10 @@ from services.eps66_backend import (
 from utils.step_report import ExecutionReport, exchange_detail, run_step
 
 
+import time
+import uuid
+
+
 @dataclass(frozen=True)
 class Eps66Case:
     case_id: str
@@ -89,7 +93,15 @@ def build_eps66_cases(
 
 
 def _case_barcode(case: Eps66Case, run_settings: Settings) -> str:
-    return str(getattr(run_settings, case.barcode_field))
+    base = str(getattr(run_settings, case.barcode_field))
+    if getattr(run_settings, "unique_run_data", True):
+        # Generate unique suffix for this run to avoid "bag already closed" errors
+        suffix = getattr(run_settings, "test_run_id", "")[-6:]
+        if not suffix:
+            suffix = uuid.uuid4().hex[:6].upper()
+        if len(base) >= 14:
+            return base[:-6] + suffix
+    return base
 
 
 def _timestamp(offset_seconds: int = 0) -> str:
@@ -141,8 +153,8 @@ def _run_case(
             run_settings.eps66_new_destination_code,
             run_settings.eps66_new_chute,
         )
-        status = response.get("status")
-        assert status in (1, "1"), (
+        payload_status = response.get("payload", {}).get("status")
+        assert payload_status in (1, "1"), (
             "EPS-66 TC-02: open parcel reassignment failed: "
             f"response={response}"
         )

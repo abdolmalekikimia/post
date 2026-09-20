@@ -114,7 +114,7 @@ def run_eps46_case(
 
     report = ExecutionReport(f"EPS-46 - {case.case_id}: {case.title}")
     report.register(
-        "1. [EPS-46] Valid Admin Login - precondition",
+        "1. [EPS-46] Valid Admin Login - POST /admin/login - precondition",
         (
             "2. [EPS-46] Register Device IP - precondition"
             if case.register_ip
@@ -131,8 +131,8 @@ def run_eps46_case(
     admin = AdminService(rest_client)
     admin_token = run_step(
         report,
-        "1. [EPS-46] Valid Admin Login - precondition",
-        lambda: admin.login(
+        "1. [EPS-46] Valid Admin Login - POST /admin/login - precondition",
+        lambda: admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         ),
@@ -178,6 +178,7 @@ def run_eps46_case(
         run_settings.ws_url,
         run_settings.timeout_seconds,
     )
+    time.sleep(6.0)  # Prevent Nginx 429 Too Many Requests on consecutive WebSocket connections
     try:
         run_step(
             report,

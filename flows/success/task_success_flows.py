@@ -15,6 +15,7 @@ from flows.bag.bag_flow_support import (
     assign_parcel,
     close_bag,
     fixture_or_generated_barcode,
+    flush_unbagged_parcels,
     generated_barcode,
     register_parcel,
     setup_authenticated_context,
@@ -88,7 +89,7 @@ def run_eps49_success_flow(
         admin_token = run_step(
             report,
             "1. [EPS-49] Admin Login - POST /admin/login",
-            lambda: admin.login(
+            lambda: admin.login_edge_admin(
                 run_settings.admin_username,
                 run_settings.admin_password,
             ),
@@ -128,9 +129,10 @@ def run_eps49_success_flow(
         device = DeviceService(ws)
 
         def authenticate() -> dict[str, Any]:
+            # Use actual device credentials for WebSocket Auth, not admin credentials
             response = device.auth(
-                run_settings.device_id,
-                run_settings.device_token,
+                run_settings.eps40_active_device_id,
+                run_settings.eps40_active_device_token,
             )
             assert_success_response(response, "EPS-49 Auth")
             if not response_field(response, "sessionId"):
@@ -220,9 +222,9 @@ def run_eps53_success_flow(
             physical_attributes={
                 "weightGrams": 999,
                 "dimensions": {
-                    "lengthMm": 300,
-                    "widthMm": 200,
-                    "heightMm": 100,
+                    "lengthCm": 30,
+                    "widthCm": 20,
+                    "heightCm": 10,
                 },
             },
             expect_discrepancy=True,
@@ -265,6 +267,7 @@ def run_eps60_success_flow(
             report=report,
         )
     finally:
+        report.print()
         context.ws.close()
         context.rest_client.close()
 
@@ -279,9 +282,9 @@ def _run_eps60_success_request(
         physical_attributes={
             "weightGrams": 850,
             "dimensions": {
-                "lengthMm": 300,
-                "widthMm": 200,
-                "heightMm": 100,
+                "lengthCm": 30,
+                "widthCm": 20,
+                "heightCm": 10,
             },
         },
         parcel_type="packet",
@@ -336,9 +339,9 @@ def _run_eps64_success_request(
         physical_attributes={
             "weightGrams": 850,
             "dimensions": {
-                "lengthMm": 300,
-                "widthMm": 200,
-                "heightMm": 100,
+                "lengthCm": 30,
+                "widthCm": 20,
+                "heightCm": 10,
             },
         },
         supplementary_data={
@@ -380,6 +383,7 @@ def run_eps71_success_flow(
             start_step=5,
         )
     finally:
+        report.print()
         context.ws.close()
         context.rest_client.close()
 
@@ -402,6 +406,7 @@ def run_eps73_success_flow(
             start_step=5,
         )
     finally:
+        report.print()
         context.ws.close()
         context.rest_client.close()
 
@@ -425,6 +430,7 @@ def run_bag_success_flow(
         f"7. [{family}] bag.close - successful parcel",
     )
     context = setup_authenticated_context(report, run_settings, family)
+    flush_unbagged_parcels(context.device, run_settings, (destination,))
     barcode = generated_barcode(barcode_prefix, run_settings, 1)
     try:
         register_response = run_step(

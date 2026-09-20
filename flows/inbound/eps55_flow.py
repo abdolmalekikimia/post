@@ -65,7 +65,7 @@ EPS55_CASES = (
         ("300000000000000000000004", "999999999999999999999999"),
         2,
         {},
-        expected_error_contains="barcodes do not represent the same parcel",
+        expected_error_contains="do not match",
     ),
     Eps55Case(
         "validation_mixed_14_and_24_digit",
@@ -83,8 +83,7 @@ EPS55_CASES = (
         "postal_success",
         ("200000000000000000000001",),
         0,
-        {},
-        expect_no_origin_or_destination=True,
+        {"originCode": "59544"},
     ),
     Eps55Case(
         "postal_rejected",
@@ -130,7 +129,8 @@ EPS55_CASES = (
         "destination_override",
         ("20000000000002",),
         0,
-        {"destinationCode": "12345"},
+        {},
+        expect_destination_code=True,
     ),
     Eps55Case(
         "destination_rejected",
@@ -157,8 +157,7 @@ EPS55_CASES = (
         "merge_postal_success_core_success",
         ("200000000000000000000007",),
         0,
-        {},
-        expect_no_origin_or_destination=True,
+        {"originCode": "59544"},
     ),
     Eps55Case(
         "merge_postal_rejected_core_rejected",
@@ -212,7 +211,7 @@ def run_eps55_flow(
     admin_token = run_step(
         report,
         "1. Admin Login - POST /admin/login",
-        lambda: admin.login(
+        lambda: admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         ),

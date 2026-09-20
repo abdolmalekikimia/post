@@ -14,6 +14,11 @@ from domain.bag_dispatch.value_objects import (
     BagBarcode,
     DispatchId,
     ExchangeCenterCode,
+    IdempotencyKey,
+)
+from domain.bag_dispatch.exceptions import (
+    BagAlreadyExistsError,
+    DispatchAlreadyExistsError,
 )
 
 
@@ -21,7 +26,7 @@ class InMemoryBagRepository(BagRepository):
     """
     In-Memory implementation for Bag testing and development
 
-    Phase 1: simple storage with in-memory lists
+    Phase 1: simple storage with in-memory dictionaries
     """
 
     def __init__(self):
@@ -30,7 +35,6 @@ class InMemoryBagRepository(BagRepository):
     def save(self, bag: Bag) -> None:
         # Check for duplicates
         if bag.bag_barcode in self._bags:
-            from domain.bag_dispatch.exceptions import BagAlreadyExistsError
             raise BagAlreadyExistsError(str(bag.bag_barcode))
 
         # Save
@@ -48,6 +52,20 @@ class InMemoryBagRepository(BagRepository):
             if bag:
                 results.append(bag)
         return results
+
+    def find_by_idempotency_key(
+        self, idempotency_key: IdempotencyKey | str
+    ) -> Optional[Bag]:
+        target = str(idempotency_key)
+        for bag in self._bags.values():
+            if str(bag.idempotency_key) == target:
+                return bag
+        return None
+
+    def exists_by_idempotency_key(
+        self, idempotency_key: IdempotencyKey | str
+    ) -> bool:
+        return self.find_by_idempotency_key(idempotency_key) is not None
 
     def find_by_spec(self, spec: BagSpec) -> PagedResult:
         # Filter in memory
@@ -103,12 +121,16 @@ class InMemoryBagRepository(BagRepository):
                 count += 1
         return count
 
+    def clear(self) -> None:
+        """Clear all stored bags (for testing)"""
+        self._bags.clear()
+
 
 class InMemoryDispatchRepository(DispatchRepository):
     """
     In-Memory implementation for Dispatch testing and development
 
-    Phase 1: simple storage with in-memory lists
+    Phase 1: simple storage with in-memory dictionaries
     """
 
     def __init__(self):
@@ -117,7 +139,6 @@ class InMemoryDispatchRepository(DispatchRepository):
     def save(self, dispatch: Dispatch) -> None:
         # Check for duplicates
         if dispatch.dispatch_id in self._dispatches:
-            from domain.bag_dispatch.exceptions import DispatchAlreadyExistsError
             raise DispatchAlreadyExistsError(str(dispatch.dispatch_id))
 
         # Save
@@ -135,6 +156,20 @@ class InMemoryDispatchRepository(DispatchRepository):
             if dispatch:
                 results.append(dispatch)
         return results
+
+    def find_by_idempotency_key(
+        self, idempotency_key: IdempotencyKey | str
+    ) -> Optional[Dispatch]:
+        target = str(idempotency_key)
+        for dispatch in self._dispatches.values():
+            if str(dispatch.idempotency_key) == target:
+                return dispatch
+        return None
+
+    def exists_by_idempotency_key(
+        self, idempotency_key: IdempotencyKey | str
+    ) -> bool:
+        return self.find_by_idempotency_key(idempotency_key) is not None
 
     def find_by_spec(self, spec: DispatchSpec) -> PagedResult:
         # Filter in memory
@@ -192,3 +227,7 @@ class InMemoryDispatchRepository(DispatchRepository):
             ):
                 count += 1
         return count
+
+    def clear(self) -> None:
+        """Clear all stored dispatches (for testing)"""
+        self._dispatches.clear()

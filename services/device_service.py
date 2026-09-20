@@ -63,7 +63,7 @@ class DeviceService:
 
     def register_inbound_barcodes(
         self,
-        barcodes: list[str],
+        barcodes: list[str] | None = None,
         timeout_ms: int = DEFAULT_INBOUND_TIMEOUT_MS,
         physical_attributes: dict[str, Any] | None = None,
         supplementary_data: dict[str, Any] | None = None,
@@ -71,17 +71,18 @@ class DeviceService:
         use_default_physical_attributes: bool = True,
         parcel_type: str | None = None,
         read_timestamp: str | None = None,
+        correlation_id: str | None = None,
     ) -> dict[str, Any]:
-        if not barcodes:
-            raise ValueError("At least one barcode is required")
+        if barcodes is None:
+            barcodes = []
 
         if physical_attributes is None and use_default_physical_attributes:
             physical_attributes = {
                 "weightGrams": 1500,
                 "dimensions": {
-                    "lengthMm": 300,
-                    "widthMm": 200,
-                    "heightMm": 100,
+                    "lengthCm": 30,
+                    "widthCm": 20,
+                    "heightCm": 10,
                 },
             }
 
@@ -98,6 +99,8 @@ class DeviceService:
                 "timeoutMs": timeout_ms,
             },
         )
+        if correlation_id:
+            envelope["correlationId"] = correlation_id
         return self.client.invoke(
             TARGET_BY_MESSAGE_TYPE["inbound.register"],
             [envelope],

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -61,4 +61,3 @@ class CreateSnapshotResult:
 
 # Import SnapshotValidationError for type hints
 from domain.bootstrap_config.exceptions import SnapshotValidationError
-from dataclasses import field

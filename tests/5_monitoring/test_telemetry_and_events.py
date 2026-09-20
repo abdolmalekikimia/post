@@ -15,8 +15,8 @@ def _require_e2e() -> None:
 @pytest.mark.eps113_success
 def test_eps113_success_scenarios():
     _require_e2e()
-    if os.getenv("RUN_EPS113_SUCCESS", "0") != "1":
-        pytest.skip("Set RUN_EPS113_SUCCESS=1 to run EPS-113 success scenarios")
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS113_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS113_SUCCESS=1 to run EPS-113 success scenarios")
 
     selected = os.getenv("EPS113_CASE", "all").lower()
     all_cases = build_eps113_cases()
@@ -36,8 +36,8 @@ def test_eps113_success_scenarios():
 @pytest.mark.eps113_negative
 def test_eps113_negative_scenarios():
     _require_e2e()
-    if os.getenv("RUN_EPS113_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_EPS113_NEGATIVE=1 to run EPS-113 negative scenarios")
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_EPS113_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_EPS113_NEGATIVE=1 to run EPS-113 negative scenarios")
 
     selected = os.getenv("EPS113_CASE", "all").lower()
     all_cases = build_eps113_cases()

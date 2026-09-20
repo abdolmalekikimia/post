@@ -33,7 +33,7 @@ PUT /admin/devices/UNKNOWN-DEVICE-001/ip
 HTTP 200
 {
   "deviceId": "UNKNOWN-DEVICE-001",
-  "ipAddress": "192.168.10.191"
+  "ipAddress": "127.0.0.1"
 }
 ```
 

@@ -24,8 +24,8 @@ def test_cps20_negative_scenarios():
     - TC-03: تشخیص مرسوله مرجوعی (Status 4 در بیزینس / نگاشت مقصد به کد شهر مبدأ)
     """
     _require_e2e()
-    if os.getenv("RUN_CPS20_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_CPS20_NEGATIVE=1 to run CPS-20 negative scenarios")
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_CPS20_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_CPS20_NEGATIVE=1 to run CPS-20 negative scenarios")
 
     all_cases = build_cps20_cases()
     negative_cases = tuple(

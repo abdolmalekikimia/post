@@ -12,6 +12,7 @@ from domain.bag_dispatch.repositories import DispatchRepository
 from domain.bag_dispatch.exceptions import (
     DispatchAlreadyExistsError,
     BagDispatchDomainError,
+    DuplicateIdempotencyKeyError,
 )
 from application.ports import EventPublisherPort
 
@@ -39,6 +40,16 @@ class RegisterDispatchHandler:
         """
         try:
             # 1. Check Idempotency - prevent duplicate registration
+            # First check by idempotency key if supported by repository
+            if hasattr(self.repository, "exists_by_idempotency_key") and self.repository.exists_by_idempotency_key(command.idempotency_key):
+                existing = self.repository.find_by_idempotency_key(command.idempotency_key)
+                if existing:
+                    return RegisterDispatchResult(
+                        dispatch_id=existing.dispatch_id,
+                        success=True,
+                    )
+
+            # Check by dispatch ID
             if self.repository.exists_by_dispatch_id(command.dispatch_id):
                 existing = self.repository.find_by_dispatch_id(command.dispatch_id)
                 if existing:

@@ -15,7 +15,7 @@ from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
 from services.admin_service import AdminService
 from services.device_service import DeviceService
-from utils.step_report import ExecutionReport, exchange_detail, run_step
+from utils.step_report import ExecutionReport, FlowExecutionError, exchange_detail, run_step
 
 
 @dataclass(frozen=True)
@@ -183,9 +183,9 @@ def _register_payload(
         physical_attributes={
             "weightGrams": 850,
             "dimensions": {
-                "lengthMm": 300,
-                "widthMm": 200,
-                "heightMm": 100,
+                "lengthCm": 30,
+                "widthCm": 20,
+                "heightCm": 10,
             },
         },
         parcel_type="packet",
@@ -261,8 +261,8 @@ def run_eps60_negative_flow(
     admin = AdminService(rest_client)
     admin_token = run_step(
         report,
-        "1. [PRECONDITION] Admin Login",
-        lambda: admin.login(
+        "1. [PRECONDITION] Admin Login - POST /admin/login",
+        lambda: admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         ),
@@ -330,6 +330,7 @@ def run_eps60_negative_flow(
             success_message="Auth دستگاه برای EPS-60 موفق شد.",
         )
 
+        case_failures: list[FlowExecutionError] = []
         for case_index, case in enumerate(active_cases):
             step_base = 5 + case_index * (2 if case.repeat_request else 1)
             _wait(run_settings)
@@ -341,50 +342,58 @@ def run_eps60_negative_flow(
                 _assert_latency(started_at, case)
                 return response
 
-            first_response = run_step(
-                report,
-                (
-                    f"{step_base}. [EPS-60] RegisterInbound - {case.case_id}: "
-                    f"{case.title} (Mock={case.required_mock_scenario})"
-                ),
-                register_case,
-                detail=lambda _: exchange_detail(ws.last_exchange),
-                error_detail=lambda error: {
-                    "error": f"{type(error).__name__}: {error}",
-                    **exchange_detail(ws.last_exchange),
-                },
-                success_message=(
-                    f"EPS-60/{case.case_id} پاسخ مورد انتظار را دریافت کرد."
-                ),
-            )
+            try:
+                first_response = run_step(
+                    report,
+                    (
+                        f"{step_base}. [EPS-60] RegisterInbound - {case.case_id}: "
+                        f"{case.title} (Mock={case.required_mock_scenario})"
+                    ),
+                    register_case,
+                    detail=lambda _: exchange_detail(ws.last_exchange),
+                    error_detail=lambda error: {
+                        "error": f"{type(error).__name__}: {error}",
+                        **exchange_detail(ws.last_exchange),
+                    },
+                    success_message=(
+                        f"EPS-60/{case.case_id} پاسخ مورد انتظار را دریافت کرد."
+                    ),
+                    mark_remaining_on_error=False,
+                )
 
-            if not case.repeat_request:
-                responses[case.case_id] = {"response": first_response}
-                continue
+                if not case.repeat_request:
+                    responses[case.case_id] = {"response": first_response}
+                    continue
 
-            _wait(run_settings)
-            retry_response = run_step(
-                report,
-                f"{step_base + 1}. [EPS-60] RegisterInbound retry - {case.case_id}",
-                register_case,
-                detail=lambda _: exchange_detail(ws.last_exchange),
-                error_detail=lambda error: {
-                    "error": f"{type(error).__name__}: {error}",
-                    **exchange_detail(ws.last_exchange),
-                },
-                success_message=(
-                    "تلاش مجدد بعد از Pending نیز پاسخ مورد انتظار را داد."
-                ),
-            )
-            responses[case.case_id] = {
-                "firstAttempt": first_response,
-                "retry": retry_response,
-            }
+                _wait(run_settings)
+                retry_response = run_step(
+                    report,
+                    f"{step_base + 1}. [EPS-60] RegisterInbound retry - {case.case_id}",
+                    register_case,
+                    detail=lambda _: exchange_detail(ws.last_exchange),
+                    error_detail=lambda error: {
+                        "error": f"{type(error).__name__}: {error}",
+                        **exchange_detail(ws.last_exchange),
+                    },
+                    success_message=(
+                        "تلاش مجدد بعد از Pending نیز پاسخ مورد انتظار را داد."
+                    ),
+                    mark_remaining_on_error=False,
+                )
+                responses[case.case_id] = {
+                    "firstAttempt": first_response,
+                    "retry": retry_response,
+                }
+            except FlowExecutionError as error:
+                case_failures.append(error)
+                responses[case.case_id] = {"error": str(error)}
     finally:
         ws.close()
         rest_client.close()
 
     report.print()
+    if case_failures:
+        raise case_failures[0]
     return Eps60Result(
         admin_token=admin_token,
         auth_response=auth_response,

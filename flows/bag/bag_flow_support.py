@@ -14,7 +14,7 @@ from config.settings import Settings
 from services.admin_service import AdminService
 from services.device_service import DeviceService
 from utils.step_report import ExecutionReport, exchange_detail, run_step
-from utils.test_data import numeric_barcode
+from utils.test_data import numeric_barcode, fixture_or_generated_barcode, generated_barcode
 
 
 _DEFAULT_VALUE = object()
@@ -55,7 +55,7 @@ def setup_authenticated_context(
     admin_token = run_step(
         report,
         PRECONDITION_STEPS[0],
-        lambda: admin.login(
+        lambda: admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         ),
@@ -77,6 +77,7 @@ def setup_authenticated_context(
         error_detail=lambda _: exchange_detail(rest_client.last_exchange),
         success_message=f"IP دستگاه برای {flow_label} ثبت شد.",
     )
+    time.sleep(2.0)
     wait_between_calls(run_settings)
 
     ws = DeviceWebSocketClient(
@@ -133,26 +134,6 @@ def setup_authenticated_context(
         raise
 
 
-def fixture_or_generated_barcode(
-    configured_barcode: str,
-    run_settings: Settings,
-    prefix: str,
-    slot: int,
-) -> str:
-    """Keep configured mock trigger barcodes stable; generate setup data otherwise."""
-    if configured_barcode:
-        return configured_barcode
-    return numeric_barcode(prefix, run_settings, slot=slot)
-
-
-def generated_barcode(
-    prefix: str,
-    run_settings: Settings,
-    slot: int,
-) -> str:
-    return numeric_barcode(prefix, run_settings, slot=slot)
-
-
 def utc_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -174,9 +155,9 @@ def register_parcel(
         or {
             "weightGrams": 850,
             "dimensions": {
-                "lengthMm": 300,
-                "widthMm": 200,
-                "heightMm": 100,
+                "lengthCm": 30,
+                "widthCm": 20,
+                "heightCm": 10,
             },
         },
         parcel_type=parcel_type,
@@ -253,3 +234,26 @@ def raw_envelope(
         "timestamp": utc_timestamp(),
         "payload": payload,
     }
+
+
+def flush_unbagged_parcels(
+    device: DeviceService,
+    run_settings: Settings,
+    destinations: tuple[str, ...] = ("31417", "02090"),
+) -> None:
+    """Flush any leftover unbagged parcels on test destinations to ensure clean slate."""
+    for dest in destinations:
+        if not dest:
+            continue
+        try:
+            device.close_bag(
+                destination_center_code=dest,
+                seal_number=f"SEAL-FLUSH-{dest}",
+                transport_type=run_settings.eps76_transport_type,
+            )
+        except Exception:
+            pass
+    try:
+        device.auth(run_settings.device_id, run_settings.device_token)
+    except Exception:
+        pass

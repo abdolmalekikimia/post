@@ -21,6 +21,7 @@ class FakeEps73Client:
         self.last_exchange: dict[str, object] = {}
         self.initial_destination = initial_destination
         self.new_destination = new_destination
+        self._assignments: dict[str, tuple[str, str | None]] = {}
 
     def invoke(
         self,
@@ -33,18 +34,21 @@ class FakeEps73Client:
         if target == "RegisterInbound":
             response: dict[str, object] = {"status": 0}
         elif target == "AssignDestination":
+            barcode = payload["barcode"]
+            destination = payload["destinationCenterCode"]
+            chute_id = payload.get("chuteId")
+            self._assignments[barcode] = (destination, chute_id)
             response = {"status": 1, "payload": {"errorMessage": None}}
         else:
             destination = payload["destinationCenterCode"]
             chute_ids = payload.get("chuteIds")
-            count = 1
-            if destination == self.initial_destination and chute_ids is None:
-                count = 0
-            if destination == self.new_destination and chute_ids == ["CH-A"]:
-                count = 0
-            if destination == self.initial_destination and chute_ids == ["CH-Z"]:
-                count = 0
-            response = {"status": 0, "payload": {"counts": {"n": count}}}
+            matching = [
+                b for b, (d, c) in list(self._assignments.items())
+                if d == destination and (chute_ids is None or c in chute_ids)
+            ]
+            for b in matching:
+                del self._assignments[b]
+            response = {"status": 0, "payload": {"counts": {"n": len(matching)}}}
         self.last_exchange = {
             "request": {
                 "target": target,
@@ -64,7 +68,7 @@ def test_eps73_success_flow_registers_all_positive_steps():
         "10. [EPS-73] TC-01 RegisterInbound - before destination change"
     )
     assert names[-1] == (
-        "28. [EPS-73] TC-04 bag.close - original chute must contain parcel"
+        "28. [EPS-73] TC-04 bag.close - original chute must be empty"
     )
 
 

@@ -10,13 +10,14 @@ from assertions.bag_assertions import (
     assert_destination_assignment_error,
     assert_destination_assignment_success,
 )
-from assertions.signalr_assertions import assert_success_response, response_field
+from assertions.signalr_assertions import assert_success_response, response_field, response_payload
 from clients.rest_client import RestClient
 from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
 from services.admin_service import AdminService
 from services.device_service import DeviceService
 from utils.step_report import ExecutionReport, exchange_detail, run_step
+from utils.test_data import numeric_barcode
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,11 @@ def _valid_barcode(run_settings: Settings) -> str:
 
 def _case_barcode(run_settings: Settings, number: int) -> str:
     """Create a unique valid 24-digit barcode for one isolated Case."""
-    return f"{run_settings.eps71_valid_barcode[:-6]}{number:06d}"
+    return numeric_barcode(
+        f"{run_settings.eps71_valid_barcode[:-6]}{number:06d}",
+        run_settings,
+        slot=number,
+    )
 
 
 def build_eps71_negative_cases(
@@ -159,7 +164,15 @@ def _register_parcel(
         .isoformat()
         .replace("+00:00", "Z"),
     )
-    assert_success_response(response, "EPS-71 RegisterInbound setup")
+    # Setup step: the parcel must be registered in Edge, but the actual
+    # routing status (0=pending, 1=rerouted, 3=rerouted-to-origin) depends
+    # on pre-configured routing rules for the barcode prefix.  Any non-error
+    # status is acceptable here.
+    status = response_payload(response).get("status")
+    assert status in (0, 1, 3, "0", "1", "3"), (
+        f"EPS-71 RegisterInbound setup failed: expected status in "
+        f"(0, 1, 3), got status={status}; response={response}"
+    )
     return response
 
 
@@ -247,8 +260,8 @@ def run_eps71_negative_flow(
     admin = AdminService(rest_client)
     admin_token = run_step(
         report,
-        "1. [PRECONDITION] Admin Login",
-        lambda: admin.login(
+        "1. [PRECONDITION] Admin Login - POST /admin/login",
+        lambda: admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         ),
@@ -316,6 +329,7 @@ def run_eps71_negative_flow(
             success_message="Auth دستگاه برای EPS-71 موفق شد.",
         )
 
+        case_failures: list[FlowExecutionError] = []
         step_number = 5
         for case in active_cases:
             if case.setup_registered_parcel:
@@ -325,35 +339,11 @@ def run_eps71_negative_flow(
                     f"{case.case_id}"
                 )
                 report.register(register_name)
-                run_step(
-                    report,
-                    register_name,
-                    lambda case=case: _register_parcel(
-                        device,
-                        case.barcode or "",
-                        run_settings,
-                    ),
-                    detail=lambda _: exchange_detail(ws.last_exchange),
-                    error_detail=lambda error: {
-                        "error": f"{type(error).__name__}: {error}",
-                        **exchange_detail(ws.last_exchange),
-                    },
-                    success_message=(
-                        f"مرسولهٔ آماده‌سازی {case.case_id} ثبت شد."
-                    ),
-                )
-                step_number += 1
-                if case.setup_destination_assignment:
-                    _wait(run_settings)
-                    assign_name = (
-                        f"{step_number}. [EPS-71] Setup destination.assign - "
-                        f"{case.case_id}"
-                    )
-                    report.register(assign_name)
+                try:
                     run_step(
                         report,
-                        assign_name,
-                        lambda case=case: _assign_parcel(
+                        register_name,
+                        lambda case=case: _register_parcel(
                             device,
                             case.barcode or "",
                             run_settings,
@@ -364,9 +354,41 @@ def run_eps71_negative_flow(
                             **exchange_detail(ws.last_exchange),
                         },
                         success_message=(
-                            f"مقصد اولیهٔ مرسولهٔ {case.case_id} ثبت شد."
+                            f"مرسولهٔ آماده‌سازی {case.case_id} ثبت شد."
                         ),
+                        mark_remaining_on_error=False,
                     )
+                except FlowExecutionError as error:
+                    case_failures.append(error)
+                step_number += 1
+                if case.setup_destination_assignment:
+                    _wait(run_settings)
+                    assign_name = (
+                        f"{step_number}. [EPS-71] Setup destination.assign - "
+                        f"{case.case_id}"
+                    )
+                    report.register(assign_name)
+                    try:
+                        run_step(
+                            report,
+                            assign_name,
+                            lambda case=case: _assign_parcel(
+                                device,
+                                case.barcode or "",
+                                run_settings,
+                            ),
+                            detail=lambda _: exchange_detail(ws.last_exchange),
+                            error_detail=lambda error: {
+                                "error": f"{type(error).__name__}: {error}",
+                                **exchange_detail(ws.last_exchange),
+                            },
+                            success_message=(
+                                f"مقصد اولیهٔ مرسولهٔ {case.case_id} ثبت شد."
+                            ),
+                            mark_remaining_on_error=False,
+                        )
+                    except FlowExecutionError as error:
+                        case_failures.append(error)
                     step_number += 1
 
                 if case.setup_bag_close:
@@ -376,23 +398,27 @@ def run_eps71_negative_flow(
                         f"{case.case_id}"
                     )
                     report.register(bag_name)
-                    run_step(
-                        report,
-                        bag_name,
-                        lambda case=case: _bag_parcel(
-                            device,
-                            case.barcode or "",
-                            run_settings,
-                        ),
-                        detail=lambda _: exchange_detail(ws.last_exchange),
-                        error_detail=lambda error: {
-                            "error": f"{type(error).__name__}: {error}",
-                            **exchange_detail(ws.last_exchange),
-                        },
-                        success_message=(
-                            f"مرسولهٔ {case.case_id} در کیسه بسته شد."
-                        ),
-                    )
+                    try:
+                        run_step(
+                            report,
+                            bag_name,
+                            lambda case=case: _bag_parcel(
+                                device,
+                                case.barcode or "",
+                                run_settings,
+                            ),
+                            detail=lambda _: exchange_detail(ws.last_exchange),
+                            error_detail=lambda error: {
+                                "error": f"{type(error).__name__}: {error}",
+                                **exchange_detail(ws.last_exchange),
+                            },
+                            success_message=(
+                                f"مرسولهٔ {case.case_id} در کیسه بسته شد."
+                            ),
+                            mark_remaining_on_error=False,
+                        )
+                    except FlowExecutionError as error:
+                        case_failures.append(error)
                     step_number += 1
 
             _wait(run_settings)
@@ -401,32 +427,39 @@ def run_eps71_negative_flow(
                 f"{case.case_id}: {case.title}"
             )
             report.register(step_name)
-            responses[case.case_id] = run_step(
-                report,
-                step_name,
-                lambda case=case: _assert_negative_assignment(
-                    device.assign_destination(
-                        barcode=case.barcode,
-                        destination_center_code=case.destination_center_code,
-                        chute_id=case.chute_id,
+            try:
+                responses[case.case_id] = run_step(
+                    report,
+                    step_name,
+                    lambda case=case: _assert_negative_assignment(
+                        device.assign_destination(
+                            barcode=case.barcode,
+                            destination_center_code=case.destination_center_code,
+                            chute_id=case.chute_id,
+                        ),
+                        case,
                     ),
-                    case,
-                ),
-                detail=lambda _: exchange_detail(ws.last_exchange),
-                error_detail=lambda error: {
-                    "error": f"{type(error).__name__}: {error}",
-                    **exchange_detail(ws.last_exchange),
-                },
-                success_message=(
-                    f"{case.case_id} پاسخ خطای مورد انتظار را دریافت کرد."
-                ),
-            )
+                    detail=lambda _: exchange_detail(ws.last_exchange),
+                    error_detail=lambda error: {
+                        "error": f"{type(error).__name__}: {error}",
+                        **exchange_detail(ws.last_exchange),
+                    },
+                    success_message=(
+                        f"{case.case_id} پاسخ خطای مورد انتظار را دریافت کرد."
+                    ),
+                    mark_remaining_on_error=False,
+                )
+            except FlowExecutionError as error:
+                case_failures.append(error)
+                responses[case.case_id] = {"error": str(error)}
             step_number += 1
     finally:
         ws.close()
         rest_client.close()
 
     report.print()
+    if case_failures:
+        raise case_failures[0]
     return Eps71Result(responses=responses, report=report)
 
 

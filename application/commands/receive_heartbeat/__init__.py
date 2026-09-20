@@ -108,3 +108,6 @@ class ReceiveHeartbeatResult:
     server_time: datetime
     error_code: Optional[str] = None
     error_message: Optional[str] = None
+
+
+from application.commands.receive_heartbeat.handler import ReceiveHeartbeatHandler

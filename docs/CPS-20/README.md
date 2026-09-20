@@ -2,14 +2,14 @@
 
 این مستند تشریح‌کننده پیاده‌سازی و زیرساخت تست تسک **CPS-20** از سیستم **Core Post Sorting** (تیم B / Epic دریافت و ثبت داده‌های عملیاتی مرسوله) است.
 
-> **نکته مهم معماری:** در حال حاضر زیرساخت تست مستقل برای Core آماده شده است، بدون اینکه Core و Edge هنوز به یکدیگر متصل شده باشند. این تست‌ها می‌توانند به صورت ایزوله روی Core API مستقیم (`http://192.168.20.196:5080/`) یا در حالت قرارداد تست شوند.
+> **نکته مهم معماری:** در حال حاضر زیرساخت تست مستقل برای Core آماده شده است، بدون اینکه Core و Edge هنوز به یکدیگر متصل شده باشند. این تست‌ها می‌توانند به صورت ایزوله روی Core API مستقیم (`http://localhost:5080/`) یا در حالت قرارداد تست شوند.
 
 ---
 
 ## 🌐 مشخصات سرویس و اتصالات
 
-- **Base URL:** `http://192.168.20.196:5080/`
-- **Swagger:** `http://192.168.20.196:5080/swagger/index.html?urls.primaryName=parcel-lifecycle`
+- **Base URL:** `http://localhost:5080/`
+- **Swagger:** `http://localhost:5080/swagger/index.html?urls.primaryName=parcel-lifecycle`
 - **Endpoint:** `POST /api/edge/parcels/inbound-query`
 - **Generic Headers:**
   - `Content-Type: application/json`

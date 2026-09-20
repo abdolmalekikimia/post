@@ -2,9 +2,10 @@ import os
 
 import pytest
 
-pytestmark = pytest.mark.skip(
-    reason="Stress tests are temporarily disabled by project policy"
-)
+if os.getenv("RUN_STRESS", "0") != "1":
+    pytestmark = pytest.mark.skip(
+        reason="Stress tests are disabled by default. Set RUN_STRESS=1 to enable."
+    )
 
 from flows.destination.eps73_stress_flow import (
     evaluate_race_result,

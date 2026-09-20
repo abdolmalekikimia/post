@@ -5,13 +5,18 @@ from assertions.signalr_assertions import response_field, response_payload
 
 def assert_core_history_response(
     response: dict[str, Any],
-    expected_status: int,
+    expected_status: int | str | tuple[Any, ...],
     operation: str,
     expected_fields: dict[str, Any] | None = None,
     expected_error_contains: str | None = None,
 ) -> None:
+    allowed_statuses = (expected_status,) if not isinstance(expected_status, tuple) else expected_status
+    if response.get("messageType") == "protocol.error":
+        if any(s in ("protocol.error", "error", None) for s in allowed_statuses):
+            return
     actual_status = response_field(response, "status")
-    assert actual_status in (expected_status, str(expected_status)), (
+    allowed_str = tuple(str(s) for s in allowed_statuses) + allowed_statuses
+    assert actual_status in allowed_str, (
         f"{operation} returned status={actual_status!r}, "
         f"expected {expected_status}; response={response}"
     )

@@ -14,8 +14,8 @@ load_dotenv(PROJECT_ROOT / "config" / "test.env")
 
 @dataclass(frozen=True)
 class Settings:
-    base_url: str = os.getenv("BASE_URL", "http://localhost:5025")
-    ws_url: str = os.getenv("WS_URL", "ws://localhost:5025")
+    base_url: str = os.getenv("BASE_URL", "https://api.example.invalid")
+    ws_url: str = os.getenv("WS_URL", "wss://api.example.invalid")
     admin_username: str = os.getenv("ADMIN_USERNAME", "admin")
     admin_password: str = os.getenv("ADMIN_PASSWORD", "")
     device_id: str = os.getenv("DEVICE_ID", "SIM-DEVICE-001")
@@ -275,6 +275,13 @@ class Settings:
     )
     # Core Inbound Query (CPS-20) settings
     core_base_url: str = os.getenv("CORE_BASE_URL", "http://localhost:5080")
+    core_auth_edge_token_path: str = os.getenv(
+        "CORE_AUTH_EDGE_TOKEN_PATH", "/api/auth/edge-token"
+    )
+    core_edge_id: str = os.getenv("CORE_EDGE_ID", "EDGE-TEST-001")
+    core_edge_secret: str = os.getenv("CORE_EDGE_SECRET", "demo-edge-secret")
+    core_admin_username: str = os.getenv("CORE_ADMIN_USERNAME", "demo-admin")
+    core_admin_password: str = os.getenv("CORE_ADMIN_PASSWORD", "demo-password")
     core_inbound_query_path: str = os.getenv(
         "CORE_INBOUND_QUERY_PATH", "/api/edge/parcels/inbound-query"
     )
@@ -283,10 +290,10 @@ class Settings:
     )
     core_timeout_seconds: float = float(os.getenv("CORE_TIMEOUT_SECONDS", "5.0"))
     cps20_returning_barcode: str = os.getenv(
-        "CPS20_RETURNING_BARCODE", "590001234567890123456788"
+        "CPS20_RETURNING_BARCODE", "680000000000000000000001"
     )
     cps20_rejected_barcode: str = os.getenv(
-        "CPS20_REJECTED_BARCODE", "590001234567890123456787"
+        "CPS20_REJECTED_BARCODE", "680000000000000000000002"
     )
     cps20_normal_barcode: str = os.getenv(
         "CPS20_NORMAL_BARCODE", "590001234567890123456789"
@@ -386,7 +393,7 @@ class Settings:
 
     # CPS-74: Sorting Device Management settings
     core_device_path: str = os.getenv(
-        "CORE_DEVICE_PATH", "/api/edge/devices"
+        "CORE_DEVICE_PATH", "/api/admin/devices"
     )
     cps74_device_name: str = os.getenv(
         "CPS74_DEVICE_NAME", "Main Conveyor Sorter"
@@ -400,7 +407,7 @@ class Settings:
         "CORE_BOOTSTRAP_PATH", "/api/edge/bootstrap"
     )
     core_admin_configurations_path: str = os.getenv(
-        "CORE_ADMIN_CONFIGURATIONS_PATH", "/api/admin/configurations"
+        "CORE_ADMIN_CONFIGURATIONS_PATH", "/api/admin/configuration-snapshots"
     )
     cps77_exchange_center_code: str = os.getenv(
         "CPS77_EXCHANGE_CENTER_CODE", "59544"
@@ -412,10 +419,10 @@ class Settings:
 
     # CPS-82: Edge Health Monitoring settings
     core_heartbeats_path: str = os.getenv(
-        "CORE_HEARTBEATS_PATH", "/api/edge/heartbeats"
+        "CORE_HEARTBEATS_PATH", "/api/edge/heartbeat"
     )
     core_admin_health_path: str = os.getenv(
-        "CORE_ADMIN_HEALTH_PATH", "/api/admin/edge-health"
+        "CORE_ADMIN_HEALTH_PATH", "/api/admin/edges/health"
     )
     cps82_edge_id: str = os.getenv(
         "CPS82_EDGE_ID", "EDGE-TEST-001"
@@ -429,6 +436,37 @@ class Settings:
     cps82_heartbeat_timeout_seconds: int = int(
         os.getenv("CPS82_HEARTBEAT_TIMEOUT_SECONDS", "60")
     )
+
+    # CPS-164: Stage Patch Verification settings
+    stage_base_url: str = os.getenv(
+        "STAGE_BASE_URL", "http://localhost:5080"
+    )
+    stage_identity_admin_username: str = os.getenv(
+        "STAGE_IDENTITY_ADMIN_USERNAME", "demo-admin"
+    )
+    stage_identity_admin_password: str = os.getenv(
+        "STAGE_IDENTITY_ADMIN_PASSWORD", "demo-password"
+    )
+    stage_edge_bootstrap_username: str = os.getenv(
+        "STAGE_EDGE_BOOTSTRAP_USERNAME", "edge-bootstrap"
+    )
+    stage_edge_bootstrap_password: str = os.getenv(
+        "STAGE_EDGE_BOOTSTRAP_PASSWORD", "demo-bootstrap-password"
+    )
+    stage_test_enabled: bool = os.getenv(
+        "RUN_STAGE", "0"
+    ).lower() in {"1", "true", "yes", "on"}
+
+    # EPS-201: Edge Installer Auto-Update settings
+    installer_version: str = os.getenv("INSTALLER_VERSION", "v2.7.1")
+    installer_primary_host: str = os.getenv("INSTALLER_PRIMARY_HOST", "localhost")
+    installer_secondary_host: str = os.getenv("INSTALLER_SECONDARY_HOST", "localhost")
+    nexus_registry_url: str = os.getenv(
+        "NEXUS_REGISTRY_URL", "https://nexus.example.invalid/repository/docker-registry"
+    )
+    installer_test_enabled: bool = os.getenv(
+        "RUN_INSTALLER_E2E", "0"
+    ).lower() in {"1", "true", "yes", "on"}
 
     eps68_case: str = os.getenv("EPS68_CASE", "all")
     eps68_returning_barcode: str = os.getenv(
@@ -477,7 +515,7 @@ class Settings:
     )
     eps83_barcode_prefix: str = os.getenv(
         "EPS83_BARCODE_PREFIX",
-        "830000000000000000",
+        "830001",
     )
     eps83_chute: str = os.getenv("EPS83_CHUTE", "CH-04")
     eps87_case: str = os.getenv("EPS87_CASE", "all")

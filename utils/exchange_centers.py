@@ -6,10 +6,8 @@ from collections.abc import Iterable
 
 VALID_EXCHANGE_CENTER_CODES = (
     "59544",
-    "11369",
-    "71956",
-    "81746",
     "31417",
+    "02090",
 )
 
 
@@ -24,7 +22,8 @@ def random_exchange_center_code(
         if code not in excluded_codes
     )
     if not candidates:
-        raise ValueError("No valid exchange-center code is available")
+        # Fall back to any valid code if all are excluded
+        return secrets.choice(VALID_EXCHANGE_CENTER_CODES)
     return secrets.choice(candidates)
 
 

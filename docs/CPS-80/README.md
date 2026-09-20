@@ -8,8 +8,8 @@
 
 ## 🌐 مشخصات سرویس و اتصالات
 
-- **Base URL:** `http://192.168.20.196:5080/`
-- **Storage URL:** `http://192.168.20.196:9000/` (یا endpoint های ابری S3)
+- **Base URL:** `http://localhost:5080/`
+- **Storage URL:** `http://localhost:9000/` (یا endpoint های ابری S3)
 - **Core Endpoint:** `POST /api/edge/parcels/images/presigned-url`
 - **Headers:**
   - `Content-Type: application/json`
@@ -32,7 +32,7 @@
   "status": 0,
   "payload": {
     "objectKey": "parcels/2025/03/10/590001234567890123456789_top.jpg",
-    "uploadUrl": "http://192.168.20.196:9000/parcel-images/parcels/2025/03/10/590001234567890123456789_top.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&...",
+    "uploadUrl": "http://localhost:9000/parcel-images/parcels/2025/03/10/590001234567890123456789_top.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&...",
     "httpMethod": "PUT",
     "expiresInSeconds": 300,
     "expiresAt": "2025-03-10T12:05:00Z",

@@ -9,6 +9,7 @@ from flows.bag.bag_flow_support import (
     PRECONDITION_STEPS,
     assign_parcel,
     close_bag,
+    flush_unbagged_parcels,
     register_parcel,
     setup_authenticated_context,
     wait_between_calls,
@@ -54,8 +55,8 @@ def build_eps87_cases(
 
 
 def _fixture_barcode(run_settings: Settings, slot: int) -> str:
-    digits = "".join(ch for ch in run_settings.eps87_barcode_prefix if ch.isdigit())
-    return f"{digits[:18].ljust(18, '0')}{slot:06d}"
+    from utils.test_data import generate_dynamic_barcode_24
+    return generate_dynamic_barcode_24(prefix="870000", slot=slot)
 
 
 def _case_chute(run_settings: Settings, case: Eps87Case) -> str:
@@ -447,6 +448,7 @@ def run_eps87_response_flow(
     report = ExecutionReport("EPS-87 bag.close response contract scenarios")
     report.register(*PRECONDITION_STEPS)
     context = setup_authenticated_context(report, run_settings, "EPS-87")
+    flush_unbagged_parcels(context.device, run_settings, (run_settings.eps87_destination_code,))
     responses: dict[str, Any] = {}
     try:
         for case in active_cases:

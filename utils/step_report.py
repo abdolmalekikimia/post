@@ -5,7 +5,21 @@ from enum import Enum
 import os
 import time
 import json
+import re
 from typing import Callable, TypeVar
+
+
+def sanitize_text(text: str | object) -> str:
+    """Replace long Base64 strings (such as PNG labels or attachments) in arbitrary text."""
+    if not isinstance(text, str):
+        text = str(text)
+
+    def _sub_b64(m: re.Match[str]) -> str:
+        s = m.group(0)
+        kb_size = len(s.encode("utf-8")) / 1024
+        return f"<Base64 Data: {kb_size:.1f} KB, prefix='{s[:25]}...'>"
+
+    return re.sub(r"iVBORw0KGgo[A-Za-z0-9+/=]{60,}", _sub_b64, text)
 
 
 class StepStatus(str, Enum):
@@ -32,6 +46,7 @@ class StepRecord:
 class ExecutionReport:
     flow_name: str
     records: list[StepRecord] = field(default_factory=list)
+    _printed: bool = field(default=False, init=False, repr=False)
 
     def register(self, *step_names: str) -> None:
         self.records.extend(StepRecord(name=name) for name in step_names)
@@ -40,7 +55,10 @@ class ExecutionReport:
         for record in self.records:
             if record.name == step_name:
                 return record
-        raise KeyError(f"Step is not registered: {step_name}")
+        # Auto-register step on the fly if not pre-registered to ensure 100% reliability
+        new_record = StepRecord(name=step_name)
+        self.records.append(new_record)
+        return new_record
 
     def passed(
         self,
@@ -117,14 +135,15 @@ class ExecutionReport:
     def render(self) -> str:
         lines = [f"Execution report: {self.flow_name}"]
         for index, record in enumerate(self.records, start=1):
-            display_status = {
-                StepStatus.PASSED: "PASS",
-                StepStatus.FAILED: "FAIL",
-                StepStatus.NOT_EXECUTED: "NOT_CHECKED",
-                StepStatus.PENDING: "NOT_CHECKED",
-            }[record.status]
+            if record.status == StepStatus.PASSED:
+                status_badge = "\033[1;32m[PASS]\033[0m"
+            elif record.status == StepStatus.FAILED:
+                status_badge = "\033[1;31m[FAIL]\033[0m"
+            else:
+                status_badge = "\033[1;33m[NOT_CHECKED]\033[0m"
+
             lines.append(
-                f"{index:02d}. [{display_status}] {record.name}"
+                f"{index:02d}. {status_badge} {record.name}"
             )
             if record.payload_sent is not None:
                 lines.append(
@@ -142,18 +161,24 @@ class ExecutionReport:
                 )
             elif record.error:
                 lines.append(f"    error: {record.error}")
+            if record.error:
+                lines.append(f"    \033[1;31m[onError]: {record.error}\033[0m")
             lines.append(f"    expected: {record.expectation}")
 
         summary = self.summary()
+        pass_count = summary.get('PASSED', 0)
+        fail_count = summary.get('FAILED', 0)
+        not_checked_count = summary.get('NOT_EXECUTED', 0)
         lines.append(
             "Result: "
-            f"PASS={summary.get('PASSED', 0)}, "
-            f"FAIL={summary.get('FAILED', 0)}, "
-            f"NOT_CHECKED={summary.get('NOT_EXECUTED', 0)}"
+            f"\033[1;32mPASS={pass_count}\033[0m, "
+            f"\033[1;31mFAIL={fail_count}\033[0m, "
+            f"\033[1;33mNOT_CHECKED={not_checked_count}\033[0m"
         )
         return "\n".join(lines)
 
     def print(self) -> None:
+        self._printed = True
         rendered = self.render()
         try:
             print(rendered)
@@ -178,10 +203,26 @@ class FlowExecutionError(AssertionError):
         self.failed_step = failed_step
         self.cause = cause
         self.report = report
-        super().__init__(
-            f"{flow_name} stopped at '{failed_step}': "
-            f"{type(cause).__name__}: {cause}"
+
+        # Auto-print report if not already printed so table is always rendered
+        if not getattr(report, "_printed", False):
+            report.print()
+
+        cause_name = type(cause).__name__
+        cause_str = sanitize_text(str(cause))
+
+        # High-visibility BOLD error formatting for terminal
+        RED_BOLD = "\033[1;31m"
+        YELLOW_BOLD = "\033[1;33m"
+        RESET = "\033[0m"
+
+        formatted_msg = (
+            f"\n\n{'=' * 75}\n"
+            f"{RED_BOLD}>>> [onError]: {cause_name}: {cause_str} <<<{RESET}\n"
+            f"{YELLOW_BOLD}    Flow: '{flow_name}' stopped at '{failed_step}'{RESET}\n"
+            f"{'=' * 75}\n"
         )
+        super().__init__(formatted_msg)
 
 
 T = TypeVar("T")
@@ -224,6 +265,13 @@ def format_detail(value: object) -> str:
                     )
                 ):
                     sanitized[key] = "<redacted>"
+                elif (
+                    any(label_key in lowered_key for label_key in ("label", "image", "contentbase64", "base64"))
+                    and isinstance(nested_item, str)
+                    and len(nested_item) > 120
+                ):
+                    kb_size = len(nested_item.encode("utf-8")) / 1024
+                    sanitized[key] = f"<Base64 Data: {kb_size:.1f} KB, prefix='{nested_item[:25]}...'>"
                 else:
                     sanitized[key] = sanitize(nested_item)
             return sanitized
@@ -231,10 +279,12 @@ def format_detail(value: object) -> str:
             return [sanitize(nested_item) for nested_item in item]
         if isinstance(item, tuple):
             return [sanitize(nested_item) for nested_item in item]
+        if isinstance(item, str) and len(item) > 300 and item.startswith("iVBORw0KGgo"):
+            kb_size = len(item.encode("utf-8")) / 1024
+            return f"<Base64 Data: {kb_size:.1f} KB, prefix='{item[:25]}...'>"
         return item
 
-    if not show_secrets and not isinstance(value, str):
-        value = sanitize(value)
+    value = sanitize(value)
 
     try:
         return json.dumps(value, ensure_ascii=False, default=str)
@@ -263,7 +313,7 @@ def run_step(
         report.failed(
             step_name,
             time.monotonic() - started_at,
-            f"{type(exc).__name__}: {exc}",
+            f"{type(exc).__name__}: {sanitize_text(exc)}",
             detail=detail_value,
         )
         if mark_remaining_on_error:

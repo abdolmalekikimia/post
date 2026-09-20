@@ -106,8 +106,8 @@ def run_eps113_flow(
         # Preconditions: Admin Login & IP registration
         admin_token = run_step(
             report,
-            "1. [PRECONDITION] Admin Login",
-            lambda: admin.login(
+            "1. [PRECONDITION] Admin Login - POST /admin/login",
+            lambda: admin.login_edge_admin(
                 run_settings.admin_username,
                 run_settings.admin_password,
             ),
@@ -270,10 +270,16 @@ def run_eps113_flow(
                         "correlationId": str(uuid4()),
                         "payload": {"invalid": True},
                     }
+                    def _send_anomalous_payload():
+                        try:
+                            return ws.invoke("UnknownMethod", [bad_envelope], invocation_id=bad_envelope["correlationId"])
+                        except Exception as ex:
+                            return {"status": "rejected", "expected_error": str(ex)}
+
                     anomaly_resp = run_step(
                         report,
                         f"4. {step_base} Send malformed payload",
-                        lambda: ws.invoke("UnknownMethod", [bad_envelope], invocation_id=bad_envelope["correlationId"]),
+                        _send_anomalous_payload,
                         detail=lambda _: exchange_detail(ws.last_exchange),
                         error_detail=lambda err: {"error": str(err), "note": "expected rejection or protocol error"},
                         mark_remaining_on_error=False,

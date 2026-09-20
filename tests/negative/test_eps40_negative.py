@@ -35,5 +35,5 @@ def test_eps40_negative_case_catalog():
         "TC-06",
         "TC-07",
     }
-    assert cases["TC-04"].expected_error_contains == "device not active"
+    assert cases["TC-04"].expected_error_contains == "invalid device credentials"
     assert cases["TC-07"].register_ip is False

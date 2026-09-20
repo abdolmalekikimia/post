@@ -18,7 +18,8 @@ from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
 from services.admin_service import AdminService
 from services.device_service import DeviceService
-from utils.step_report import ExecutionReport, exchange_detail, run_step
+from flows.bag.bag_flow_support import flush_unbagged_parcels
+from utils.step_report import ExecutionReport, FlowExecutionError, exchange_detail, run_step
 
 
 @dataclass(frozen=True)
@@ -49,12 +50,11 @@ class _Eps76BarcodeGenerator:
     def __init__(self, prefix: str) -> None:
         self.prefix = prefix
         self._counter = 0
-        self._seed = uuid4().int % 900_000
 
     def next(self) -> str:
-        suffix = (self._seed + self._counter) % 900_000 + 100_000
+        from utils.test_data import generate_dynamic_barcode_24
         self._counter += 1
-        return f"{self.prefix}{suffix:06d}"[:24].ljust(24, "0")
+        return generate_dynamic_barcode_24(prefix="760000", slot=self._counter)
 
 
 def build_eps76_negative_cases(
@@ -207,6 +207,9 @@ def _prepare_parcels(
     destinations = case.setup_destinations or (
         case.setup_destination or run_settings.eps76_destination_code,
     )
+    # Flush any unbagged leftover parcels from previous negative test steps to ensure clean counts
+    flush_unbagged_parcels(device, run_settings, destinations)
+
     barcodes: list[str] = []
     for index in range(count):
         barcode = barcode_generator.next()
@@ -383,8 +386,8 @@ def run_eps76_negative_flow(
     admin = AdminService(rest_client)
     admin_token = run_step(
         report,
-        "1. [PRECONDITION] Admin Login",
-        lambda: admin.login(
+        "1. [PRECONDITION] Admin Login - POST /admin/login",
+        lambda: admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         ),
@@ -406,8 +409,7 @@ def run_eps76_negative_flow(
         error_detail=lambda _: exchange_detail(rest_client.last_exchange),
         success_message="IP دستگاه برای EPS-76 ثبت شد.",
     )
-    if run_settings.api_delay_seconds > 0:
-        time.sleep(run_settings.api_delay_seconds)
+    time.sleep(2.0)
 
     ws = DeviceWebSocketClient(
         run_settings.ws_url,
@@ -432,15 +434,16 @@ def run_eps76_negative_flow(
         barcode_generator = _Eps76BarcodeGenerator(
             run_settings.eps76_barcode_prefix
         )
+        def _auth_precondition():
+            resp = device.auth(run_settings.device_id, run_settings.device_token)
+            if resp.get("payload", {}).get("status") != 0:
+                raise AssertionError(f"Device authentication failed: {resp}")
+            return resp
+
         run_step(
             report,
             "4. [PRECONDITION] Device Authentication",
-            lambda: (
-                device.auth(
-                    run_settings.device_id,
-                    run_settings.device_token,
-                )
-            ),
+            _auth_precondition,
             detail=lambda _: exchange_detail(ws.last_exchange),
             error_detail=lambda error: {
                 "error": f"{type(error).__name__}: {error}",
@@ -449,6 +452,10 @@ def run_eps76_negative_flow(
             success_message="Auth دستگاه برای EPS-76 موفق شد.",
         )
 
+        # Clean up residual parcels from prior test runs
+        flush_unbagged_parcels(device, run_settings, (run_settings.eps76_destination_code,))
+
+        case_failures: list[FlowExecutionError] = []
         step_index = 5
         for case in active_cases:
             if run_settings.api_delay_seconds > 0:
@@ -466,43 +473,55 @@ def run_eps76_negative_flow(
                     f"{step_index}. [EPS-76] {case.case_id} - concurrent bag.close"
                 )
                 report.register(step_name)
-                responses[case.case_id] = run_step(
-                    report,
-                    step_name,
-                    lambda case=case: {
-                        "responses": _run_concurrent_case(case, run_settings)
-                    },
-                    detail=lambda result: result,
-                    error_detail=lambda error: {
-                        "error": f"{type(error).__name__}: {error}",
-                    },
-                    success_message="درخواست‌های همزمان بدون انتخاب تکراری بررسی شدند.",
-                )
+                try:
+                    responses[case.case_id] = run_step(
+                        report,
+                        step_name,
+                        lambda case=case: {
+                            "responses": _run_concurrent_case(case, run_settings)
+                        },
+                        detail=lambda result: result,
+                        error_detail=lambda error: {
+                            "error": f"{type(error).__name__}: {error}",
+                        },
+                        success_message="درخواست‌های همزمان بدون انتخاب تکراری بررسی شدند.",
+                        mark_remaining_on_error=False,
+                    )
+                except FlowExecutionError as error:
+                    case_failures.append(error)
+                    responses[case.case_id] = {"error": str(error)}
                 step_index += 1
                 continue
 
             cursor = prepared[1] if case.case_id == "TC-08" and len(prepared) > 1 else None
             step_name = f"{step_index}. [EPS-76] BagClose - {case.case_id}: {case.title}"
             report.register(step_name)
-            responses[case.case_id] = run_step(
-                report,
-                step_name,
-                lambda case=case, cursor=cursor: _run_single_bag_case(
-                    device, case, run_settings, cursor
-                ),
-                detail=lambda _: exchange_detail(ws.last_exchange),
-                error_detail=lambda error: {
-                    "error": f"{type(error).__name__}: {error}",
-                    **exchange_detail(ws.last_exchange),
-                },
-                success_message=(
-                    f"{case.case_id} پاسخ مورد انتظار را دریافت کرد."
-                ),
-            )
+            try:
+                responses[case.case_id] = run_step(
+                    report,
+                    step_name,
+                    lambda case=case, cursor=cursor: _run_single_bag_case(
+                        device, case, run_settings, cursor
+                    ),
+                    detail=lambda _: exchange_detail(ws.last_exchange),
+                    error_detail=lambda error: {
+                        "error": f"{type(error).__name__}: {error}",
+                        **exchange_detail(ws.last_exchange),
+                    },
+                    success_message=(
+                        f"{case.case_id} پاسخ مورد انتظار را دریافت کرد."
+                    ),
+                    mark_remaining_on_error=False,
+                )
+            except FlowExecutionError as error:
+                case_failures.append(error)
+                responses[case.case_id] = {"error": str(error)}
             step_index += 1
     finally:
         ws.close()
         rest_client.close()
 
     report.print()
+    if case_failures:
+        raise case_failures[0]
     return Eps76Result(responses=responses, report=report)

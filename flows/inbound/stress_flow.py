@@ -199,7 +199,7 @@ def run_inbound_stress_flow(
     )
     admin = AdminService(rest_client)
     try:
-        admin_token = admin.login(
+        admin_token = admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         )

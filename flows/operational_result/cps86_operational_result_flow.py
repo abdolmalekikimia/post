@@ -55,7 +55,7 @@ CPS86_CASES = (
         called_at_utc="2025-01-15T10:00:00Z",
         responded_at_utc="2025-01-15T10:00:01Z",
         attempts=1,
-        final_status="Success",
+        final_status="Completed",
         expected_http_status=200,
     ),
     OperationalResultCase(
@@ -71,7 +71,7 @@ CPS86_CASES = (
         called_at_utc="2025-01-15T10:05:00Z",
         responded_at_utc="2025-01-15T10:05:30Z",
         attempts=1,
-        final_status="Failure",
+        final_status="Error",
         expected_http_status=200,
     ),
     OperationalResultCase(
@@ -87,7 +87,7 @@ CPS86_CASES = (
         called_at_utc="2025-01-15T10:10:00Z",
         responded_at_utc="2025-01-15T10:10:05Z",
         attempts=3,
-        final_status="Success",
+        final_status="Completed",
         expected_http_status=200,
     ),
     OperationalResultCase(
@@ -103,7 +103,7 @@ CPS86_CASES = (
         called_at_utc="2025-01-15T10:15:00Z",
         responded_at_utc="2025-01-15T10:15:01Z",
         attempts=1,
-        final_status="Success",
+        final_status="Completed",
         auth_token=None,  # No token
         expected_http_status=401,
     ),
@@ -120,7 +120,7 @@ CPS86_CASES = (
         called_at_utc="2025-01-15T10:20:00Z",
         responded_at_utc="2025-01-15T10:20:01Z",
         attempts=1,
-        final_status="Success",
+        final_status="Completed",
         expected_http_status=200,
     ),
     OperationalResultCase(
@@ -136,7 +136,7 @@ CPS86_CASES = (
         called_at_utc="2025-01-15T10:25:00Z",
         responded_at_utc="2025-01-15T10:25:01Z",
         attempts=1,
-        final_status="Success",
+        final_status="Completed",
         expected_http_status=400,
     ),
 )
@@ -180,15 +180,19 @@ def _request_store_operational_result(
     client: HttpClient,
     case: OperationalResultCase,
     run_settings: Settings,
+    token: Optional[str] = None,
 ) -> dict[str, Any]:
     """Store Operational Result via Core REST API (Real Core Contract)."""
     correlation_id = str(uuid.uuid4())
+    idem_key = str(uuid.uuid5(uuid.NAMESPACE_DNS, case.correlation_id)) if case.correlation_id else str(uuid.uuid4())
     headers = {
         "Content-Type": "application/json",
         "X-Correlation-ID": correlation_id,
+        "Idempotency-Key": idem_key,
     }
-    if case.auth_token:
-        headers["Authorization"] = f"Bearer {case.auth_token}"
+    auth = token if (case.auth_token == "valid-edge-jwt-token" and token) else case.auth_token
+    if auth:
+        headers["Authorization"] = f"Bearer {auth}"
 
     # Real Core contract: OperationalResultRequest
     payload = {
@@ -241,12 +245,19 @@ def run_cps86_flow(
     responses: dict[str, dict[str, Any]] = {}
     case_failures: list[FlowExecutionError] = []
 
+    edge_token = None
+    try:
+        from utils.auth_helper import get_edge_token
+        edge_token = get_edge_token(client, run_settings=run_settings)
+    except Exception:
+        pass
+
     try:
         for case in cases:
             step_name = f"{case.case_id}: {case.title}"
 
             def make_call() -> dict[str, Any]:
-                res = _request_store_operational_result(client, case, run_settings)
+                res = _request_store_operational_result(client, case, run_settings, token=edge_token)
 
                 if case.category == "unauthorized":
                     assert_operational_result_error(

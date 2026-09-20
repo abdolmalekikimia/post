@@ -54,10 +54,10 @@ class ImageMetadataDTO:
     correlation_id: str
     idempotency_key: str
     occurred_at_utc: str
-    reading_record_id: Optional[str] = None
-    checksum_sha256: Optional[str] = None
     event_type: str
     created_at_utc: str
+    reading_record_id: Optional[str] = None
+    checksum_sha256: Optional[str] = None
     updated_at_utc: Optional[str] = None
 
 

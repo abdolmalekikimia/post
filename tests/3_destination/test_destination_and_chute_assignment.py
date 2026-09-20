@@ -1,5 +1,6 @@
 import os
 import pytest
+from config.settings import settings
 
 from flows.success.task_success_flows import (
     run_eps60_success_flow,
@@ -30,20 +31,26 @@ def _require_e2e() -> None:
 @pytest.mark.e2e
 @pytest.mark.success
 @pytest.mark.eps60_success
+@pytest.mark.skip(reason="نیازمند وب‌سرویس استعلام مقصد بارکد ۱۴ رقمی از طرف کارفرما (فعلاً در دسترس نیست)")
 def test_eps60_successful_destination_lookup():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS60_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS60_SUCCESS=1 to run EPS-60 success scenario")
     result = run_eps60_success_flow()
+    if hasattr(result, "report") and result.report:
+        result.report.print()
     assert set(result.responses) == {"TC-08"}
 
 
 @pytest.mark.e2e
 @pytest.mark.negative
 @pytest.mark.eps60_negative
+@pytest.mark.skip(reason="نیازمند وب‌سرویس استعلام مقصد بارکد ۱۴ رقمی از طرف کارفرما (فعلاً در دسترس نیست)")
 def test_eps60_pending_and_negative_cases():
     _require_e2e()
-    if os.getenv("RUN_EPS60_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_EPS60_NEGATIVE=1 to run EPS-60 negative scenarios")
-    cases = select_eps60_cases(build_eps60_cases(), os.getenv("EPS60_CASE", "all"))
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_EPS60_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_EPS60_NEGATIVE=1 to run EPS-60 negative scenarios")
+    cases = select_eps60_cases(settings, build_eps60_cases())
     result = run_eps60_negative_flow(cases=cases)
     assert set(result.responses).issubset({case.case_id for case in cases})
 
@@ -62,7 +69,11 @@ def test_eps60_case_catalog():
 @pytest.mark.eps71_success
 def test_eps71_positive_destination_assignment_cases():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS71_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS71_SUCCESS=1 to run EPS-71 positive scenarios")
     result = run_eps71_success_flow()
+    if hasattr(result, "report") and result.report:
+        result.report.print()
     assert set(result.responses) == {"TC-01_with_chute", "TC-02_without_chute"}
 
 
@@ -71,8 +82,8 @@ def test_eps71_positive_destination_assignment_cases():
 @pytest.mark.eps71_negative
 def test_eps71_negative_scenarios():
     _require_e2e()
-    if os.getenv("RUN_EPS71_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_EPS71_NEGATIVE=1 to run EPS-71 negative scenarios")
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_EPS71_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_EPS71_NEGATIVE=1 to run EPS-71 negative scenarios")
     result = run_eps71_negative_flow()
     assert result.responses
 
@@ -89,7 +100,11 @@ def test_eps71_case_catalog():
 @pytest.mark.eps73_success
 def test_eps73_positive_destination_update_cases():
     _require_e2e()
+    if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS73_SUCCESS", "0") != "1":
+        pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS73_SUCCESS=1 to run EPS-73 positive scenarios")
     result = run_eps73_success_flow()
+    if hasattr(result, "report") and result.report:
+        result.report.print()
     assert set(result.responses) == {"TC-01", "TC-02", "TC-03", "TC-04"}
 
 
@@ -98,8 +113,8 @@ def test_eps73_positive_destination_update_cases():
 @pytest.mark.eps73_negative
 def test_eps73_negative_scenarios():
     _require_e2e()
-    if os.getenv("RUN_EPS73_NEGATIVE", "0") != "1":
-        pytest.skip("Set RUN_EPS73_NEGATIVE=1 to run EPS-73 negative scenarios")
+    if os.getenv("RUN_NEGATIVE", "0") != "1" and os.getenv("RUN_EPS73_NEGATIVE", "0") != "1":
+        pytest.skip("Set RUN_NEGATIVE=1 or RUN_EPS73_NEGATIVE=1 to run EPS-73 negative scenarios")
     result = run_eps73_negative_flow()
     assert result.responses
 

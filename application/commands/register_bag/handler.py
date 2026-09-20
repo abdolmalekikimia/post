@@ -41,8 +41,16 @@ class RegisterBagHandler:
         """
         try:
             # 1. Check Idempotency - prevent duplicate registration
-            # In Phase 1, we don't have a direct idempotency check in BagRepository
-            # The BagAlreadyExistsError will be caught if bag_barcode already exists
+            # First check by idempotency key if supported by repository
+            if hasattr(self.repository, "exists_by_idempotency_key") and self.repository.exists_by_idempotency_key(command.idempotency_key):
+                existing = self.repository.find_by_idempotency_key(command.idempotency_key)
+                if existing:
+                    return RegisterBagResult(
+                        bag_barcode=existing.bag_barcode,
+                        success=True,
+                    )
+
+            # Check by bag barcode
             if self.repository.exists_by_bag_barcode(command.bag_barcode):
                 existing = self.repository.find_by_bag_barcode(command.bag_barcode)
                 if existing:

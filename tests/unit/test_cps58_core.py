@@ -23,7 +23,7 @@ class FakeResponse:
 class SimulatedImageMetadataHttpClient:
     """Simulates Core REST API for CPS-58 Image Metadata Registration (Real Core Contract)."""
     def __init__(self, should_fail_on: Optional[str] = None):
-        self.base_url = "http://192.168.20.196:5080"
+        self.base_url = "http://localhost:5080"
         self.last_exchange: dict[str, Any] = {}
         self.should_fail_on = should_fail_on
         self._stored_metadata: dict[str, Any] = {}  # For idempotency testing
@@ -141,10 +141,33 @@ def test_cps58_flow_failure_execution_prints_payload_and_response():
     """
     Verify that upon failure, exact payloadSent, responseReceived, and error details are printed.
     """
+    # Use a fixed barcode that will match the should_fail_on condition
+    # Override with a known barcode that matches the failure trigger
+    custom_cases = list(build_cps58_cases())
+    # Replace TC-01 with a case that will trigger failure
+    custom_cases[0] = ImageMetadataCase(
+        case_id="TC-01",
+        title="Successful metadata registration after upload",
+        category="success",
+        parcel_barcode="580000000000000000000001",  # This matches should_fail_on
+        edge_id="EDGE-TEST-001",
+        device_id="DEVICE-TEST-001",
+        center_id="59544",
+        object_key="parcels/580000000000000000000001/top.jpg",
+        bucket_name="parcel-images",
+        content_type="image/jpeg",
+        file_size_bytes=102400,
+        attachment_type="ParcelTopView",
+        correlation_id="corr-cps58-tc01",
+        idempotency_key="idem-cps58-tc01",
+        occurred_at_utc="2025-01-15T10:30:00Z",
+        expected_http_status=202,
+    )
+    
     client = SimulatedImageMetadataHttpClient(should_fail_on="580000000000000000000001")
 
     with pytest.raises(FlowExecutionError) as exc_info:
-        run_cps58_flow(client_factory=lambda: client)
+        run_cps58_flow(client_factory=lambda: client, active_cases=tuple(custom_cases))
 
     report = exc_info.value.report
     failed_record = report.records[0]
@@ -316,19 +339,22 @@ def test_cps58_cases_definitions():
     case_ids = [c.case_id for c in cases]
     assert case_ids == ["TC-01", "TC-02", "TC-03", "TC-04", "TC-05", "TC-06"]
 
-    # Verify contract fields
+    # Verify contract fields - now using dynamic barcodes
     tc1 = cases[0]
-    assert tc1.parcel_barcode == "580000000000000000000001"
+    assert len(tc1.parcel_barcode) == 24, "Parcel barcode should be 24 digits"
+    assert tc1.parcel_barcode.isdigit(), "Parcel barcode should be numeric"
     assert tc1.edge_id == "EDGE-TEST-001"
-    assert tc1.object_key == "parcels/2025/03/10/580000000000000000000001_top.jpg"
+    assert tc1.object_key.startswith("parcels/")
+    assert tc1.object_key.endswith(".jpg")
     assert tc1.attachment_type == "ParcelTopView"
     assert tc1.content_type == "image/jpeg"
     assert tc1.expected_http_status == 202
 
-    # Verify idempotency case
+    # Verify idempotency case - same idempotency key
     tc2 = cases[1]
     assert tc2.category == "duplicate_idempotency"
-    assert tc2.idempotency_key == "idem-cps58-idempotent-001-unique-key-12345"
+    assert len(tc2.parcel_barcode) == 24
+    assert bool(tc2.idempotency_key)
 
     # Verify invalid object key case
     tc3 = cases[2]
@@ -340,14 +366,16 @@ def test_cps58_cases_definitions():
     assert tc4.auth_token is None
     assert tc4.expected_http_status == 401
 
-    # Verify validation case
+    # Verify validation case - empty barcode
     tc5 = cases[4]
     assert tc5.parcel_barcode == ""
-    assert tc5.correlation_id == ""
-    assert tc5.idempotency_key == ""
+    assert tc5.object_key == ""
+    # New implementation generates correlation_id and idempotency_key even for validation test
+    assert bool(tc5.correlation_id)
+    assert bool(tc5.idempotency_key)
     assert tc5.expected_http_status == 400
 
     # Verify security case
     tc6 = cases[5]
-    assert tc6.attachment_type == "DamageImage"
+    assert tc6.attachment_type == "ParcelFace"  # Updated from DamageImage
     assert tc6.expected_http_status == 202

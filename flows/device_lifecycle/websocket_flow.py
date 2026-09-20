@@ -61,7 +61,7 @@ def run_websocket_flow(
     admin_token = run_step(
         report,
         "1. [BASE] Admin Login - POST /admin/login",
-        lambda: admin.login(
+        lambda: admin.login_edge_admin(
             run_settings.admin_username,
             run_settings.admin_password,
         ),

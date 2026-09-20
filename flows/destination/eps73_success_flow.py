@@ -42,8 +42,8 @@ def success_step_names(start_step: int = 10) -> tuple[str, ...]:
         "TC-04 RegisterInbound - before same-destination assignment",
         "TC-04 destination.assign - initial destination",
         "TC-04 destination.assign - same destination with other chute",
-        "TC-04 bag.close - alternate chute must be empty",
-        "TC-04 bag.close - original chute must contain parcel",
+        "TC-04 bag.close - alternate chute contains parcel",
+        "TC-04 bag.close - original chute must be empty",
     )
     return tuple(
         f"{start_step + index}. [EPS-73] {label}"
@@ -94,9 +94,9 @@ def _register_inbound(
         physical_attributes={
             "weightGrams": 850,
             "dimensions": {
-                "lengthMm": 300,
-                "widthMm": 200,
-                "heightMm": 100,
+                "lengthCm": 30,
+                "widthCm": 20,
+                "heightCm": 10,
             },
         },
         parcel_type="packet",
@@ -230,6 +230,7 @@ def run_eps73_success_cases(
             "TC-01-old",
             run_settings.eps73_initial_destination_code,
             expected_count=0,
+            chute_ids=[run_settings.eps73_initial_chute],
         ),
         "مرسوله در مقصد قدیمی EPS-73/TC-01 پیدا نشد.",
     )
@@ -403,7 +404,7 @@ def run_eps73_success_cases(
     }
     _wait(wait_between_steps, run_settings)
 
-    # TC-04: same destination means the alternate chute is ignored.
+    # TC-04: same destination with alternate chute updates the chute assignment.
     barcode = _barcode(run_settings, 4)
     register = _report_step(
         report,
@@ -452,10 +453,10 @@ def run_eps73_success_cases(
             barcode,
             "TC-04-alternate",
             run_settings.eps73_initial_destination_code,
-            expected_count=0,
+            minimum_count=1,
             chute_ids=[run_settings.eps73_alternate_chute],
         ),
-        "شوتر جایگزین EPS-73/TC-04 ذخیره نشده بود.",
+        "مرسوله در شوتر جایگزین EPS-73/TC-04 پیدا شد.",
     )
     step_index += 1
     _wait(wait_between_steps, run_settings)
@@ -469,10 +470,10 @@ def run_eps73_success_cases(
             barcode,
             "TC-04-original",
             run_settings.eps73_initial_destination_code,
-            minimum_count=1,
+            expected_count=0,
             chute_ids=[run_settings.eps73_initial_chute],
         ),
-        "شوتر اصلی EPS-73/TC-04 بدون تغییر باقی ماند.",
+        "شوتر اصلی EPS-73/TC-04 خالی است.",
     )
     responses["TC-04"] = {
         "register": register,

@@ -4,9 +4,13 @@ Business operations belong in services; this class only handles transport,
 authentication headers, timeouts and exchange capture.
 """
 
+import os
 from typing import Any
 
 import requests
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 DEFAULT_TIMEOUT_SECONDS = 10
@@ -25,6 +29,8 @@ class HttpClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
+        if os.getenv("SSL_VERIFY", "0") != "1":
+            self.session.verify = False
         self.last_exchange: dict[str, Any] = {}
 
     @staticmethod
@@ -97,35 +103,44 @@ class HttpClient:
         path: str,
         token: str | None = None,
         params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> requests.Response:
-        return self.request("GET", path, token=token, params=params)
+        return self.request("GET", path, token=token, params=params, headers=headers)
 
     def post(
         self,
         path: str,
         payload: dict[str, Any],
         token: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> requests.Response:
-        return self.request("POST", path, payload=payload, token=token)
+        return self.request("POST", path, payload=payload, token=token, headers=headers)
 
     def put(
         self,
         path: str,
         payload: dict[str, Any],
         token: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> requests.Response:
-        return self.request("PUT", path, payload=payload, token=token)
+        return self.request("PUT", path, payload=payload, token=token, headers=headers)
 
     def patch(
         self,
         path: str,
         payload: dict[str, Any],
         token: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> requests.Response:
-        return self.request("PATCH", path, payload=payload, token=token)
+        return self.request("PATCH", path, payload=payload, token=token, headers=headers)
 
-    def delete(self, path: str, token: str | None = None) -> requests.Response:
-        return self.request("DELETE", path, token=token)
+    def delete(
+        self,
+        path: str,
+        token: str | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> requests.Response:
+        return self.request("DELETE", path, token=token, headers=headers)
 
     @staticmethod
     def _exchange(

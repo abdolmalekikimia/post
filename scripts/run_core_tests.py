@@ -59,6 +59,7 @@ class TestRun:
     target: str
     marker: str | None = None
     extra_args: tuple[str, ...] = ()
+    environment: dict[str, str] = field(default_factory=dict)
     timeout_seconds: float = 60.0
 
 
@@ -83,65 +84,251 @@ class RunOutcome:
 
 
 def build_core_test_matrix() -> list[TestRun]:
-    """Define all Core (CPS) unit test runs."""
+    """Define all Core (CPS) E2E test runs (positive + negative)."""
+    # Base E2E env - requires RUN_E2E=1 and Mock Backend on localhost:5025
+    base_e2e_env = {"RUN_E2E": "1"}
+    
     runs: list[TestRun] = [
-        # CPS-20: Inbound Query
+        # ============ CPS-20: Inbound Query ============
         TestRun(
-            label="Core / CPS-20 Inbound Query",
-            target="tests/unit/test_cps20_core.py",
-            timeout_seconds=30,
+            label="Core E2E / CPS-20 Inbound Query (Positive)",
+            target="tests/2_inbound",
+            marker="cps20_success",
+            environment={**base_e2e_env, "RUN_CPS20_SUCCESS": "1"},
+            timeout_seconds=60,
         ),
-        # CPS-65: Status Evaluator
         TestRun(
-            label="Core / CPS-65 Status Evaluator",
+            label="Core E2E / CPS-20 Inbound Query (Negative)",
+            target="tests/2_inbound",
+            marker="cps20_negative",
+            environment={**base_e2e_env, "RUN_CPS20_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-65: Status Evaluator (Domain Service - no E2E) ============
+        # CPS-65 is a domain service, tested via unit tests
+        TestRun(
+            label="Core Unit / CPS-65 Status Evaluator",
             target="tests/unit/test_cps65_status_evaluator.py",
             timeout_seconds=30,
         ),
-        # CPS-80: Pre-signed URL
+        
+        # ============ CPS-80: Pre-signed URL ============
         TestRun(
-            label="Core / CPS-80 Pre-signed URL",
-            target="tests/unit/test_cps80_core.py",
+            label="Core E2E / CPS-80 Pre-signed URL (Positive)",
+            target="tests/2_inbound",
+            marker="cps80_success",
+            environment={**base_e2e_env, "RUN_CPS80_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-80 Pre-signed URL (Negative)",
+            target="tests/2_inbound",
+            marker="cps80_negative",
+            environment={**base_e2e_env, "RUN_CPS80_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-86: Operational Results ============
+        TestRun(
+            label="Core E2E / CPS-86 Operational Results (Positive)",
+            target="tests/2_inbound",
+            marker="cps86_success",
+            environment={**base_e2e_env, "RUN_CPS86_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-86 Operational Results (Negative)",
+            target="tests/2_inbound",
+            marker="cps86_negative",
+            environment={**base_e2e_env, "RUN_CPS86_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-58: Image Metadata ============
+        TestRun(
+            label="Core E2E / CPS-58 Image Metadata (Positive)",
+            target="tests/2_inbound",
+            marker="cps58_success",
+            environment={**base_e2e_env, "RUN_CPS58_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-58 Image Metadata (Negative)",
+            target="tests/2_inbound",
+            marker="cps58_negative",
+            environment={**base_e2e_env, "RUN_CPS58_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-61: Attachment Metadata Linking ============
+        TestRun(
+            label="Core E2E / CPS-61 Attachment Linking (Positive)",
+            target="tests/2_inbound",
+            marker="cps61_success",
+            environment={**base_e2e_env, "RUN_CPS61_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-61 Attachment Linking (Negative)",
+            target="tests/2_inbound",
+            marker="cps61_negative",
+            environment={**base_e2e_env, "RUN_CPS61_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+
+        # ============ CPS-63: Barcode Set Validation ============
+        TestRun(
+            label="Core E2E / CPS-63 Barcode Validation (Positive)",
+            target="tests/2_inbound",
+            marker="cps63_success",
+            environment={**base_e2e_env, "RUN_CPS63_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-63 Barcode Validation (Negative)",
+            target="tests/2_inbound",
+            marker="cps63_negative",
+            environment={**base_e2e_env, "RUN_CPS63_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-67: Bag & Dispatch Storage ============
+        TestRun(
+            label="Core E2E / CPS-67 Bag & Dispatch (Positive)",
+            target="tests/4_bagging",
+            marker="cps67_success",
+            environment={**base_e2e_env, "RUN_CPS67_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-67 Bag & Dispatch (Negative)",
+            target="tests/4_bagging",
+            marker="cps67_negative",
+            environment={**base_e2e_env, "RUN_CPS67_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-74: Sorting Device Management ============
+        TestRun(
+            label="Core E2E / CPS-74 Device Management (Positive)",
+            target="tests/1_device_lifecycle",
+            marker="cps74_success",
+            environment={**base_e2e_env, "RUN_CPS74_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-74 Device Management (Negative)",
+            target="tests/1_device_lifecycle",
+            marker="cps74_negative",
+            environment={**base_e2e_env, "RUN_CPS74_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-77: Bootstrap Configuration ============
+        TestRun(
+            label="Core E2E / CPS-77 Bootstrap Config (Positive)",
+            target="tests/1_device_lifecycle",
+            marker="cps77_success",
+            environment={**base_e2e_env, "RUN_CPS77_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-77 Bootstrap Config (Negative)",
+            target="tests/1_device_lifecycle",
+            marker="cps77_negative",
+            environment={**base_e2e_env, "RUN_CPS77_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-82: Edge Health Monitoring ============
+        TestRun(
+            label="Core E2E / CPS-82 Edge Health (Positive)",
+            target="tests/5_monitoring",
+            marker="cps82_success",
+            environment={**base_e2e_env, "RUN_CPS82_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-82 Edge Health (Negative)",
+            target="tests/5_monitoring",
+            marker="cps82_negative",
+            environment={**base_e2e_env, "RUN_CPS82_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-33: Idempotency Management ============
+        TestRun(
+            label="Core E2E / CPS-33 Idempotency (Positive)",
+            target="tests/2_inbound",
+            marker="cps33_success",
+            environment={**base_e2e_env, "RUN_CPS33_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-33 Idempotency (Negative)",
+            target="tests/2_inbound",
+            marker="cps33_negative",
+            environment={**base_e2e_env, "RUN_CPS33_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-9: BuildingBlocks and Contract Lock ============
+        TestRun(
+            label="Core E2E / CPS-9 Contract Lock (Positive)",
+            target="tests/1_device_lifecycle",
+            marker="cps9_success",
+            environment={**base_e2e_env, "RUN_CPS9_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-9 Contract Lock (Negative)",
+            target="tests/1_device_lifecycle",
+            marker="cps9_negative",
+            environment={**base_e2e_env, "RUN_CPS9_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-49: Edge Deactivation & Audit Log ============
+        TestRun(
+            label="Core E2E / CPS-49 Edge Deactivation (Positive)",
+            target="tests/1_device_lifecycle",
+            marker="cps49_success",
+            environment={**base_e2e_env, "RUN_CPS49_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-49 Edge Deactivation (Negative)",
+            target="tests/1_device_lifecycle",
+            marker="cps49_negative",
+            environment={**base_e2e_env, "RUN_CPS49_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ CPS-70: RBAC & Center Scoping ============
+        TestRun(
+            label="Core E2E / CPS-70 RBAC (Positive)",
+            target="tests/1_device_lifecycle",
+            marker="cps70_success",
+            environment={**base_e2e_env, "RUN_CPS70_SUCCESS": "1"},
+            timeout_seconds=60,
+        ),
+        TestRun(
+            label="Core E2E / CPS-70 RBAC (Negative)",
+            target="tests/1_device_lifecycle",
+            marker="cps70_negative",
+            environment={**base_e2e_env, "RUN_CPS70_NEGATIVE": "1"},
+            timeout_seconds=60,
+        ),
+        
+        # ============ Unit Tests (for regression) ============
+        TestRun(
+            label="Core Unit / CPS-65 Status Evaluator",
+            target="tests/unit/test_cps65_status_evaluator.py",
             timeout_seconds=30,
         ),
-        # CPS-86: Operational Results
         TestRun(
-            label="Core / CPS-86 Operational Results",
-            target="tests/unit/test_cps86_core.py",
-            timeout_seconds=30,
-        ),
-        # CPS-58: Image Metadata
-        TestRun(
-            label="Core / CPS-58 Image Metadata",
-            target="tests/unit/test_cps58_core.py",
-            timeout_seconds=60,
-        ),
-        # CPS-67: Bag & Dispatch Storage
-        TestRun(
-            label="Core / CPS-67 Bag & Dispatch",
-            target="tests/unit/test_cps67_core.py",
-            timeout_seconds=60,
-        ),
-        # CPS-74: Sorting Device Management
-        TestRun(
-            label="Core / CPS-74 Device Management",
-            target="tests/unit/test_cps74_core.py",
-            timeout_seconds=60,
-        ),
-        # CPS-77: Bootstrap Configuration
-        TestRun(
-            label="Core / CPS-77 Bootstrap Config",
-            target="tests/unit/test_cps77_core.py",
-            timeout_seconds=60,
-        ),
-        # CPS-82: Edge Health Monitoring
-        TestRun(
-            label="Core / CPS-82 Edge Health",
-            target="tests/unit/test_cps82_core.py",
-            timeout_seconds=60,
-        ),
-        # Full Core unit suite (catches import errors + regressions)
-        TestRun(
-            label="Core / Full Unit Suite",
+            label="Core Unit / Full Unit Suite",
             target="tests/unit",
             timeout_seconds=60,
         ),
@@ -231,6 +418,7 @@ def _classify(result: subprocess.CompletedProcess[str]) -> RunOutcome:
 
 def run_one(test_run: TestRun) -> RunOutcome:
     environment = os.environ.copy()
+    environment.update(test_run.environment)
     command = [*PYTEST, *test_run.target.split()]
     if test_run.marker:
         command.extend(["-m", test_run.marker])
