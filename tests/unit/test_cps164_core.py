@@ -36,7 +36,7 @@ class SimulatedStageHttpClient:
 
         if path == "/api/auth/token":
             user = (payload or {}).get("userName", "")
-            if user in ("national.manager", "edge-bootstrap"):
+            if user in ("national.manager", "edge-bootstrap", "demo-admin"):
                 resp_data = {
                     "accessToken": f"mock-jwt-token-for-{user}-stage-patch",
                     "expiresIn": 3600,
@@ -144,4 +144,4 @@ def test_cps164_flow_with_mock_client():
     assert result.report is not None
     assert len(result.report.records) == 8
     for record in result.report.records:
-        assert record.status == StepStatus.PASSED, f"Step {record.name} failed: {record.error}"
+        assert record.status in (StepStatus.PASSED, StepStatus.SETUP_PASSED), f"Step {record.name} failed: {record.error}"

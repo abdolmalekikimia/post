@@ -27,6 +27,7 @@ class StepStatus(str, Enum):
     PASSED = "PASSED"
     FAILED = "FAILED"
     NOT_EXECUTED = "NOT_EXECUTED"
+    SETUP_PASSED = "SETUP_PASSED"
 
 
 @dataclass
@@ -40,6 +41,24 @@ class StepRecord:
     response_received: object = None
     expectation: str = "NOT_CHECKED"
     error: str = ""
+    is_precondition: bool = False
+
+
+def is_setup_step(name: str) -> bool:
+    """Identify whether a step is infrastructure setup / precondition vs business scenario."""
+    low = name.lower()
+    return any(
+        k in low
+        for k in (
+            "precondition",
+            "admin login",
+            "update device ip",
+            "register device ip",
+            "connect/handshake",
+            "websocket connect",
+            "signalr connect",
+        )
+    )
 
 
 @dataclass
@@ -49,14 +68,17 @@ class ExecutionReport:
     _printed: bool = field(default=False, init=False, repr=False)
 
     def register(self, *step_names: str) -> None:
-        self.records.extend(StepRecord(name=name) for name in step_names)
+        for name in step_names:
+            is_pre = is_setup_step(name)
+            self.records.append(StepRecord(name=name, is_precondition=is_pre))
 
     def _record(self, step_name: str) -> StepRecord:
         for record in self.records:
             if record.name == step_name:
                 return record
         # Auto-register step on the fly if not pre-registered to ensure 100% reliability
-        new_record = StepRecord(name=step_name)
+        is_pre = is_setup_step(step_name)
+        new_record = StepRecord(name=step_name, is_precondition=is_pre)
         self.records.append(new_record)
         return new_record
 
@@ -68,12 +90,12 @@ class ExecutionReport:
         detail: object = "",
     ) -> None:
         record = self._record(step_name)
-        record.status = StepStatus.PASSED
+        record.status = StepStatus.SETUP_PASSED if record.is_precondition else StepStatus.PASSED
         record.duration_seconds = duration_seconds
         record.message = message
         record.detail = detail
         self._capture_exchange(record, detail)
-        record.expectation = "PASS"
+        record.expectation = "SETUP" if record.is_precondition else "PASS"
 
     def failed(
         self,
@@ -124,18 +146,24 @@ class ExecutionReport:
                 record.detail = ""
 
     def summary(self) -> dict[str, int]:
-        return {
+        res = {
             status.value: sum(
                 record.status == status for record in self.records
             )
             for status in StepStatus
-            if status != StepStatus.PENDING
+            if status not in (StepStatus.PENDING, StepStatus.SETUP_PASSED)
         }
+        setup_count = sum(record.status == StepStatus.SETUP_PASSED for record in self.records)
+        if setup_count > 0:
+            res[StepStatus.SETUP_PASSED.value] = setup_count
+        return res
 
     def render(self) -> str:
         lines = [f"Execution report: {self.flow_name}"]
         for index, record in enumerate(self.records, start=1):
-            if record.status == StepStatus.PASSED:
+            if record.status == StepStatus.SETUP_PASSED:
+                status_badge = "\033[1;36m[SETUP]\033[0m"
+            elif record.status == StepStatus.PASSED:
                 status_badge = "\033[1;32m[PASS]\033[0m"
             elif record.status == StepStatus.FAILED:
                 status_badge = "\033[1;31m[FAIL]\033[0m"
@@ -166,15 +194,19 @@ class ExecutionReport:
             lines.append(f"    expected: {record.expectation}")
 
         summary = self.summary()
+        setup_count = summary.get('SETUP_PASSED', 0)
         pass_count = summary.get('PASSED', 0)
         fail_count = summary.get('FAILED', 0)
         not_checked_count = summary.get('NOT_EXECUTED', 0)
-        lines.append(
-            "Result: "
-            f"\033[1;32mPASS={pass_count}\033[0m, "
-            f"\033[1;31mFAIL={fail_count}\033[0m, "
-            f"\033[1;33mNOT_CHECKED={not_checked_count}\033[0m"
-        )
+        
+        result_parts = []
+        if setup_count > 0:
+            result_parts.append(f"\033[1;36mSETUP={setup_count}\033[0m")
+        result_parts.append(f"\033[1;32mPASS={pass_count}\033[0m")
+        result_parts.append(f"\033[1;31mFAIL={fail_count}\033[0m")
+        result_parts.append(f"\033[1;33mNOT_CHECKED={not_checked_count}\033[0m")
+        
+        lines.append(f"Result: {', '.join(result_parts)}")
         return "\n".join(lines)
 
     def print(self) -> None:
@@ -255,13 +287,20 @@ def format_detail(value: object) -> str:
             sanitized = {}
             for key, nested_item in item.items():
                 lowered_key = str(key).lower()
+                # Strict masking of all security secrets and tokens
                 if not show_secrets and any(
                     secret_name in lowered_key
                     for secret_name in (
                         "password",
                         "token",
+                        "devicetoken",
+                        "admintoken",
                         "authorization",
                         "secret",
+                        "apikey",
+                        "api_key",
+                        "accesskey",
+                        "secretkey",
                     )
                 ):
                     sanitized[key] = "<redacted>"

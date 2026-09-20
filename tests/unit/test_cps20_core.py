@@ -151,8 +151,10 @@ def test_cps20_flow_failure_execution_prints_payload_and_response():
     بررسی اینکه در حالت FAIL (شکست یا خطای سرویس Core) نیز
     گزارش‌دهی کامل با ثبت دقیق payloadSent و responseReceived و متن خطا چاپ می‌شود.
     """
+    cases = build_cps20_cases()
+    tc02_barcode = cases[1].parcel_barcode
     # شبیه‌سازی خطا روی بارکد TC-02
-    client = SimulatedCoreHttpClient(should_fail_on="590001234567890123456788")
+    client = SimulatedCoreHttpClient(should_fail_on=tc02_barcode)
 
     with pytest.raises(FlowExecutionError) as exc_info:
         run_cps20_flow(client_factory=lambda: client)

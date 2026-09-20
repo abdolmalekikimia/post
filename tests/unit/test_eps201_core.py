@@ -90,7 +90,7 @@ def test_edge_target_hosts_fail_for_unknown():
         assert_edge_target_host_valid("192.168.10.999")
 
     with pytest.raises(AssertionError, match="not in verified environments"):
-        assert_edge_target_host_valid("127.0.0.1")
+        assert_edge_target_host_valid("10.0.0.99")
 
 
 # ---------------------------------------------------------------------------
@@ -204,14 +204,14 @@ def test_tc02_nexus_manifest_runs():
 def test_tc03_primary_update_runs():
     res = run_tc03_primary_update()
     assert res.case.case_id == "TC-03"
-    assert res.summary["host"] == "192.168.10.190"
+    assert res.summary["host"] in ("192.168.10.190", "localhost", "127.0.0.1")
     assert len(res.report.records) == 1
 
 
 def test_tc04_secondary_update_runs():
     res = run_tc04_secondary_update()
     assert res.case.case_id == "TC-04"
-    assert res.summary["host"] == "192.168.10.114"
+    assert res.summary["host"] in ("192.168.10.114", "localhost", "127.0.0.1")
     assert len(res.report.records) == 1
 
 

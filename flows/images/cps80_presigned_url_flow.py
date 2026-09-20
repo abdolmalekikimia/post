@@ -260,12 +260,12 @@ def run_cps80_flow(
                         client.last_exchange["storageUpload"] = upload_exchange
                     except requests.exceptions.ConnectionError as conn_err:
                         if "core_minio" in str(conn_err) or "core_minio" in expired_url:
-                            # Business boundary: In environments outside Docker, core_minio is internal
-                            # and DNS resolution fails. The presigned URL generation is verified successfully.
-                            client.last_exchange["storageUpload"] = {
-                                "statusCode": -1,
-                                "body": f"Internal object storage host 'core_minio' is not resolvable from outside container network. Presigned URL generation verified successfully."
-                            }
+                            # If MinIO is internal/unreachable, fail honestly if E2E upload is demanded
+                            import pytest
+                            pytest.skip(
+                                f"Internal object storage host 'core_minio' unresolvable from outside container network. "
+                                f"Cannot perform live expired-upload rejection test."
+                            )
                         else:
                             raise
 

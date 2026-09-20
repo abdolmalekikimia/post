@@ -253,6 +253,11 @@ def run_eps83_flow(
                     ),
                     "بررسی رفتار عدم دسترسی یا پاسخ پستی.",
                 )
+                payload = response.get("payload", {})
+                assert "status" in payload, f"EPS-83 S4 response missing status: {response}"
+                assert payload.get("status") in (0, 1, 2), f"EPS-83 S4 invalid status: {payload.get('status')}"
+                if payload.get("status") == 2:
+                    assert payload.get("resultType") in ("Error", "Disconnection", "PostalUnavailable"), f"Unexpected resultType on status 2: {payload}"
                 responses[case.case_id] = response
 
             elif case.category == "partial_label":
@@ -294,6 +299,14 @@ def run_eps83_flow(
                     ),
                     "بستن کیسه با چند مرسوله.",
                 )
+                payload = response.get("payload", {})
+                assert payload.get("status") in (0, 1), f"EPS-83 S5 failed to close bag: {response}"
+                # If completed successfully, verify bagBarcode and Base64 label
+                if payload.get("resultType") == "Completed":
+                    assert payload.get("bagBarcode") is not None, f"EPS-83 S5 Completed without bagBarcode: {response}"
+                    label_b64 = payload.get("bagLabel")
+                    if label_b64:
+                        assert len(label_b64) > 50, "EPS-83 S5 label length too short"
                 responses[case.case_id] = response
 
             elif case.category == "retry_success":

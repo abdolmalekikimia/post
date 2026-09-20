@@ -116,7 +116,11 @@ def test_eps83_label_and_bag_success_scenarios():
         and (selected == "all" or case.case_id.lower() == selected)
     )
     result = run_eps83_flow(cases=cases)
-    assert set(result.responses).issubset({case.case_id for case in cases})
+    assert set(result.responses) == {case.case_id for case in cases}
+    for case_id, resp in result.responses.items():
+        assert isinstance(resp, dict), f"EPS-83 {case_id}: response not a dict"
+        payload = resp.get("payload", resp)
+        assert isinstance(payload, dict), f"EPS-83 {case_id}: payload not a dict"
 
 
 @pytest.mark.e2e
@@ -137,7 +141,11 @@ def test_eps83_negative_scenarios():
         and (selected == "all" or case.case_id.lower() == selected)
     )
     result = run_eps83_flow(cases=cases)
-    assert set(result.responses).issubset({case.case_id for case in cases})
+    assert set(result.responses) == {case.case_id for case in cases}
+    for case_id, resp in result.responses.items():
+        assert isinstance(resp, dict), f"EPS-83 {case_id}: response not a dict"
+        payload = resp.get("payload", resp)
+        assert isinstance(payload, dict), f"EPS-83 {case_id}: payload not a dict"
 
 
 @pytest.mark.catalog

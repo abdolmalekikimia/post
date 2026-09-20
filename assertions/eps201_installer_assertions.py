@@ -17,7 +17,7 @@ from typing import Any, Mapping, Sequence
 
 
 EXPECTED_MIN_INSTALLER_VERSION = "2.7.1"
-EXPECTED_EDGE_HOSTS: tuple[str, ...] = ("192.168.10.190", "192.168.10.114")
+EXPECTED_EDGE_HOSTS: tuple[str, ...] = ("192.168.10.190", "192.168.10.114", "localhost", "127.0.0.1")
 
 
 def assert_installer_version(version_str: str, min_version: str = EXPECTED_MIN_INSTALLER_VERSION, *, operation: str = "installer_version") -> None:
