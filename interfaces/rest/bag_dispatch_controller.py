@@ -19,24 +19,14 @@ from interfaces.dto.bag_dispatch_dto import (
     to_register_bag_response_dto,
     to_register_dispatch_response_dto,
 )
-from application.commands.register_bag import (
-    RegisterBagHandler,
-    RegisterBagValidator,
-)
-from application.commands.register_dispatch import (
-    RegisterDispatchHandler,
-    RegisterDispatchValidator,
-)
-from application.queries.get_bag import (
-    GetBagByBarcodeQuery,
-    SearchBagsQuery,
-    GetBagHandler,
-)
-from application.queries.get_dispatch import (
-    GetDispatchByIdQuery,
-    SearchDispatchesQuery,
-    GetDispatchHandler,
-)
+from application.commands.register_bag import RegisterBagValidator
+from application.commands.register_bag.handler import RegisterBagHandler
+from application.commands.register_dispatch import RegisterDispatchValidator
+from application.commands.register_dispatch.handler import RegisterDispatchHandler
+from application.queries.get_bag import GetBagByBarcodeQuery, SearchBagsQuery
+from application.queries.get_bag.handler import GetBagHandler
+from application.queries.get_dispatch import GetDispatchByIdQuery, SearchDispatchesQuery
+from application.queries.get_dispatch.handler import GetDispatchHandler
 from domain.bag_dispatch.exceptions import MetadataValidationError
 
 logger = logging.getLogger(__name__)

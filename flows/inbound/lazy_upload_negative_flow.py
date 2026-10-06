@@ -52,45 +52,45 @@ def build_lazy_upload_negative_cases(
         ),
         LazyUploadNegativeCase(
             name="image_missing_image_id",
-            barcode=run_settings.lazy_upload_negative_barcode,
+            barcode=run_settings.eps64_negative_barcode,
             expected_status=2,
             images=(_valid_image(imageId=""),),
         ),
         LazyUploadNegativeCase(
             name="image_missing_content",
-            barcode=run_settings.lazy_upload_negative_barcode,
+            barcode=run_settings.eps64_negative_barcode,
             expected_status=2,
             images=(_valid_image(contentBase64=""),),
         ),
         LazyUploadNegativeCase(
             name="image_invalid_mime_type",
-            barcode=run_settings.lazy_upload_negative_barcode,
+            barcode=run_settings.eps64_negative_barcode,
             expected_status=2,
             images=(_valid_image(mimeType="application/unknown"),),
         ),
         LazyUploadNegativeCase(
             name="supplementary_data_incomplete",
-            barcode=run_settings.lazy_upload_negative_barcode,
+            barcode=run_settings.eps64_negative_barcode,
             expected_status=2,
             supplementary_data={"appearanceStatus": None},
         ),
         LazyUploadNegativeCase(
             name="image_rejected",
-            barcode=run_settings.lazy_upload_rejected_barcode,
+            barcode=run_settings.eps64_rejected_barcode,
             expected_status=2,
             expected_error_contains="rejected",
             images=(_valid_image(),),
         ),
         LazyUploadNegativeCase(
             name="image_timeout",
-            barcode=run_settings.lazy_upload_timeout_barcode,
+            barcode=run_settings.eps64_timeout_barcode,
             expected_status=2,
             expected_error_contains="timeout",
             images=(_valid_image(),),
         ),
         LazyUploadNegativeCase(
             name="image_unavailable",
-            barcode=run_settings.lazy_upload_unavailable_barcode,
+            barcode=run_settings.eps64_unavailable_barcode,
             expected_status=2,
             expected_error_contains="unavailable",
             images=(_valid_image(),),
@@ -120,7 +120,7 @@ def run_lazy_upload_negative_flow(
         if cases is not None
         else build_lazy_upload_negative_cases(run_settings)
     )
-    selected_case = run_settings.lazy_upload_negative_case.strip().lower()
+    selected_case = run_settings.eps64_negative_case.strip().lower()
     if selected_case != "all":
         active_cases = tuple(
             case for case in active_cases

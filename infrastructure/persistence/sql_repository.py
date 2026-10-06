@@ -12,6 +12,7 @@ from domain.image_metadata.repositories import (
 )
 from domain.image_metadata.value_objects import (
     AttachmentId,
+    CorrelationId,
     AttachmentType,
     CenterId,
     DeviceId,

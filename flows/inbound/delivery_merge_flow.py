@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import time
 from typing import Any
 
-from assertions.inbound_orchestration_assertions import assert_delivery_merge_response
+from assertions.inbound_orchestration_assertions import assert_eps55_response
 from assertions.signalr_assertions import assert_success_response, response_field
 from clients.rest_client import RestClient
 from clients.signalr_client import DeviceWebSocketClient
@@ -283,7 +283,7 @@ def run_delivery_merge_flow(
                     physical_attributes=case.physical_attributes,
                 )
 
-                assert_delivery_merge_response(
+                assert_eps55_response(
                     response=response,
                     expected_status=case.expected_status,
                     operation=case.name,

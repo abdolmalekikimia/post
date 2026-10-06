@@ -27,10 +27,8 @@ from domain.edge_health.exceptions import (
     EdgeHealthNotFoundError,
     EdgeHealthValidationError,
 )
-from application.commands.receive_heartbeat import (
-    ReceiveHeartbeatCommand,
-    ReceiveHeartbeatHandler,
-)
+from application.commands.receive_heartbeat import ReceiveHeartbeatCommand
+from application.commands.receive_heartbeat.handler import ReceiveHeartbeatHandler
 from application.queries.get_edge_health import (
     GetEdgeHealthQuery,
     GetEdgeHealthHandler,
@@ -253,7 +251,7 @@ def test_tc08_no_ip_address_stored_in_health_data():
 
     for payload in [entity_dict, dto.to_response_dict() if hasattr(dto, "to_response_dict") else dto_response]:
         raw = json.dumps(payload).lower()
-        assert "ip" not in [k.lower() for k in payload.keys()] or True
+        assert "ip" not in [k.lower() for k in payload.keys()]
         assert "device_ip" not in raw
         assert "edge_ip" not in raw
         assert "ip_address" not in raw

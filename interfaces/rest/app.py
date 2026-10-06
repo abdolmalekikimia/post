@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -32,23 +34,15 @@ from interfaces.dto.bag_dispatch_dto import (
     to_register_bag_response_dto,
     to_register_dispatch_response_dto,
 )
-from application.commands.register_image_metadata import (
-    RegisterImageMetadataHandler,
-    RegisterImageMetadataCommand,
-    RegisterImageMetadataResult,
-    RegisterImageMetadataValidator,
-)
-from application.commands.register_bag import (
-    RegisterBagHandler,
-    RegisterBagValidator,
-)
-from application.commands.register_dispatch import (
-    RegisterDispatchHandler,
-    RegisterDispatchValidator,
-)
-from application.queries.get_image_metadata import GetImageMetadataHandler
-from application.queries.get_bag import GetBagHandler
-from application.queries.get_dispatch import GetDispatchHandler
+from application.commands.register_image_metadata import RegisterImageMetadataCommand, RegisterImageMetadataResult, RegisterImageMetadataValidator
+from application.commands.register_image_metadata.handler import RegisterImageMetadataHandler
+from application.commands.register_bag import RegisterBagValidator
+from application.commands.register_bag.handler import RegisterBagHandler
+from application.commands.register_dispatch import RegisterDispatchValidator
+from application.commands.register_dispatch.handler import RegisterDispatchHandler
+from application.queries.get_image_metadata.handler import GetImageMetadataHandler
+from application.queries.get_bag.handler import GetBagHandler
+from application.queries.get_dispatch.handler import GetDispatchHandler
 from domain.image_metadata.value_objects import (
     AttachmentId, ObjectKey, ParcelBarcode, EdgeId, DeviceId, CenterId,
     AttachmentType, CorrelationId, IdempotencyKey, ReadingRecordId,
@@ -71,6 +65,9 @@ from infrastructure.config.bag_dispatch_config import config as bag_dispatch_con
 
 
 # ============ Pydantic Models for FastAPI ============
+
+logger = logging.getLogger(__name__)
+
 
 class RegisterImageMetadataRequest(BaseModel):
     """FastAPI request model"""

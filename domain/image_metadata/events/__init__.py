@@ -6,6 +6,7 @@ from typing import Optional
 
 from domain.image_metadata.value_objects import (
     AttachmentId,
+    IdempotencyKey,
     AttachmentType,
     CorrelationId,
     DeviceId,
@@ -50,7 +51,6 @@ class ImageMetadataRegistered:
     def to_dict(self) -> dict:
         """تبدیل به dict برای serialization در message broker"""
         return {
-            "eventType": "ImageMetadataRegistered",
             "attachmentId": str(self.attachment_id),
             "parcelBarcode": str(self.parcel_barcode),
             "edgeId": str(self.edge_id),

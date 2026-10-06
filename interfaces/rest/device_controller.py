@@ -17,31 +17,19 @@ from interfaces.dto.device_dto import (
     to_device_response_dto,
     to_register_response_dto,
 )
-from application.commands.register_device import (
-    RegisterDeviceCommand,
-    RegisterDeviceResult,
-    RegisterDeviceHandler,
-)
-from application.commands.update_device import (
-    UpdateDeviceCommand,
-    UpdateDeviceResult,
-    UpdateDeviceHandler,
-)
-from application.commands.deactivate_device import (
-    DeactivateDeviceCommand,
-    DeactivateDeviceHandler,
-)
-from application.commands.activate_device import (
-    ActivateDeviceCommand,
-    ActivateDeviceHandler,
-)
-from application.queries.get_device import (
-    GetDeviceByIdQuery,
-    GetDeviceByLogicalCodeQuery,
-    GetDeviceHandler,
-)
+from application.commands.register_device import RegisterDeviceCommand, RegisterDeviceResult
+from application.commands.register_device.handler import RegisterDeviceHandler
+from application.commands.update_device import UpdateDeviceCommand, UpdateDeviceResult
+from application.commands.update_device.handler import UpdateDeviceHandler
+from application.commands.deactivate_device import DeactivateDeviceCommand
+from application.commands.deactivate_device.handler import DeactivateDeviceHandler
+from application.commands.activate_device import ActivateDeviceCommand
+from application.commands.activate_device.handler import ActivateDeviceHandler
+from application.queries.get_device import GetDeviceByIdQuery, GetDeviceByLogicalCodeQuery
+from application.queries.get_device.handler import GetDeviceHandler
 from domain.sorting_device.value_objects import (
     DeviceId,
+    CorrelationId,
     LogicalCode,
 )
 from domain.sorting_device.exceptions import DeviceValidationError

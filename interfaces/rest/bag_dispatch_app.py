@@ -22,10 +22,10 @@ from interfaces.dto.bag_dispatch_dto import (
     PagedDispatchResponseDTO,
     ErrorResponseDTO,
 )
-from application.commands.register_bag import RegisterBagHandler
-from application.commands.register_dispatch import RegisterDispatchHandler
-from application.queries.get_bag import GetBagHandler
-from application.queries.get_dispatch import GetDispatchHandler
+from application.commands.register_bag.handler import RegisterBagHandler
+from application.commands.register_dispatch.handler import RegisterDispatchHandler
+from application.queries.get_bag.handler import GetBagHandler
+from application.queries.get_dispatch.handler import GetDispatchHandler
 from infrastructure.persistence.in_memory_bag_dispatch_repository import (
     InMemoryBagRepository,
     InMemoryDispatchRepository,

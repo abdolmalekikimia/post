@@ -1,2 +1,8 @@
 # Local and CI quality tooling
 pylint>=3.0,<4
+
+# Optional demo API and messaging adapters are included in static analysis.
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+aio-pika>=9,<10
+aiokafka>=0.12,<1

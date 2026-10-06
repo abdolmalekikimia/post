@@ -43,24 +43,24 @@ def build_policy_sync_cases(run_settings: Settings = settings) -> dict[str, Poli
         "TC-03": PolicySyncCase(
             case_id="TC-03",
             title="Enabled policy with zero deadline rejects the full sync",
-            device_id=run_settings.policy_sync_new_device_id,
-            device_token=run_settings.policy_sync_new_device_token,
+            device_id=run_settings.eps46_new_device_id,
+            device_token=run_settings.eps46_new_device_token,
             expected_status=2,
             expected_error_contains=None,
         ),
         "TC-04": PolicySyncCase(
             case_id="TC-04",
             title="Enabled policy with negative deadline rejects the full sync",
-            device_id=run_settings.policy_sync_new_device_id,
-            device_token=run_settings.policy_sync_new_device_token,
+            device_id=run_settings.eps46_new_device_id,
+            device_token=run_settings.eps46_new_device_token,
             expected_status=2,
             expected_error_contains=None,
         ),
         "TC-05": PolicySyncCase(
             case_id="TC-05",
             title="Disabled policy with negative deadline is accepted",
-            device_id=run_settings.policy_sync_active_device_id,
-            device_token=run_settings.policy_sync_active_device_token,
+            device_id=run_settings.eps46_active_device_id,
+            device_token=run_settings.eps46_active_device_token,
             expected_status=0,
             expected_error_contains=None,
             register_ip=True,
@@ -104,7 +104,7 @@ def run_policy_sync_case(
     run_settings: Settings = settings,
 ) -> PolicySyncResult:
     cases = build_policy_sync_cases(run_settings)
-    selected_case_id = (case_id or run_settings.policy_sync_case).upper()
+    selected_case_id = (case_id or run_settings.eps46_case).upper()
     if selected_case_id not in cases:
         available = ", ".join(cases)
         raise ValueError(

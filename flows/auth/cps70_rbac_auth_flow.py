@@ -182,9 +182,11 @@ def run_cps70_rbac_flow(
 
             if c.include_token:
                 if c.tamper_token:
-                    headers["Authorization"] = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.INVALID_TAMPERED_PAYLOAD.SIGNATURE"
+                    test_token = create_test_jwt({"sub": "fake-admin"}, tamper=True)
+                    headers["Authorization"] = f"Bearer {test_token}"
                 elif c.scenario_type == "missing_claim":
-                    headers["Authorization"] = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmYWtlLWFkbWluIiwicm9sZSI6IlN5c3RlbUFkbWluIn0.fake"
+                    test_token = create_test_jwt({"sub": "fake-admin", "role": "SystemAdmin"})
+                    headers["Authorization"] = f"Bearer {test_token}"
                 elif c.scenario_type == "admin_full":
                     admin_token = get_admin_token(client, run_settings=run_settings)
                     headers["Authorization"] = f"Bearer {admin_token}"

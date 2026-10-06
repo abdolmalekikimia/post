@@ -42,101 +42,101 @@ def build_destination_lookup_cases(
     run_settings: Settings = settings,
 ) -> tuple[DestinationLookupCase, ...]:
     """Return the ten documented Destination Lookup cases in numeric order."""
-    pending_timeout = run_settings.destination_lookup_pending_timeout_ms
+    pending_timeout = run_settings.eps60_pending_timeout_ms
     return (
         DestinationLookupCase(
             "TC-01",
             "24-digit barcode with Delivery Network Pending",
-            run_settings.destination_lookup_barcode_24,
+            run_settings.eps60_barcode_24,
             "Pending",
             pending_timeout,
             1,
-            max_latency_ms=pending_timeout + run_settings.destination_lookup_latency_grace_ms,
+            max_latency_ms=pending_timeout + run_settings.eps60_latency_grace_ms,
         ),
         DestinationLookupCase(
             "TC-02",
             "Device timeout budget is smaller than server timeout",
-            run_settings.destination_lookup_barcode_24,
+            run_settings.eps60_barcode_24,
             "Pending",
-            run_settings.destination_lookup_short_timeout_ms,
+            run_settings.eps60_short_timeout_ms,
             1,
             max_latency_ms=(
-                run_settings.destination_lookup_short_timeout_ms
-                + run_settings.destination_lookup_latency_grace_ms
+                run_settings.eps60_short_timeout_ms
+                + run_settings.eps60_latency_grace_ms
             ),
         ),
         DestinationLookupCase(
             "TC-03",
             "Retry after Pending is idempotent",
-            run_settings.destination_lookup_barcode_24,
+            run_settings.eps60_barcode_24,
             "Pending",
             pending_timeout,
             1,
             repeat_request=True,
-            max_latency_ms=pending_timeout + run_settings.destination_lookup_latency_grace_ms,
+            max_latency_ms=pending_timeout + run_settings.eps60_latency_grace_ms,
         ),
         DestinationLookupCase(
             "TC-04",
             "14-digit barcode with destination lookup timeout",
-            run_settings.destination_lookup_barcode_14,
+            run_settings.eps60_barcode_14,
             "Timeout/Unavailable",
-            run_settings.destination_lookup_destination_timeout_ms,
+            run_settings.eps60_destination_timeout_ms,
             1,
             max_latency_ms=(
-                run_settings.destination_lookup_destination_timeout_ms
-                + run_settings.destination_lookup_latency_grace_ms
+                run_settings.eps60_destination_timeout_ms
+                + run_settings.eps60_latency_grace_ms
             ),
         ),
         DestinationLookupCase(
             "TC-05",
             "24-digit barcode uses the current fallback placeholder",
-            run_settings.destination_lookup_barcode_24,
+            run_settings.eps60_barcode_24,
             "Pending",
             pending_timeout,
             1,
-            max_latency_ms=pending_timeout + run_settings.destination_lookup_latency_grace_ms,
+            max_latency_ms=pending_timeout + run_settings.eps60_latency_grace_ms,
         ),
         DestinationLookupCase(
             "TC-06",
             "37-digit barcode behaves like its first 24 digits",
-            run_settings.destination_lookup_barcode_37,
+            run_settings.eps60_barcode_37,
             "Pending",
             pending_timeout,
             1,
-            max_latency_ms=pending_timeout + run_settings.destination_lookup_latency_grace_ms,
+            max_latency_ms=pending_timeout + run_settings.eps60_latency_grace_ms,
         ),
         DestinationLookupCase(
             "TC-07",
             "14-digit barcode with destination lookup timeout",
-            run_settings.destination_lookup_barcode_14,
+            run_settings.eps60_barcode_14,
             "Timeout/Unavailable",
-            run_settings.destination_lookup_destination_timeout_ms,
+            run_settings.eps60_destination_timeout_ms,
             1,
             max_latency_ms=(
-                run_settings.destination_lookup_destination_timeout_ms
-                + run_settings.destination_lookup_latency_grace_ms
+                run_settings.eps60_destination_timeout_ms
+                + run_settings.eps60_latency_grace_ms
             ),
         ),
         DestinationLookupCase(
             "TC-08",
             "14-digit barcode with successful destination lookup",
-            run_settings.destination_lookup_barcode_14,
+            run_settings.eps60_barcode_14,
             "Success",
-            run_settings.destination_lookup_destination_timeout_ms,
+            run_settings.eps60_destination_timeout_ms,
             0,
         ),
         DestinationLookupCase(
             "TC-09",
             "14-digit barcode rejected by destination lookup",
-            run_settings.destination_lookup_barcode_14,
+            run_settings.eps60_barcode_14,
             "Rejected",
-            run_settings.destination_lookup_destination_timeout_ms,
+            run_settings.eps60_destination_timeout_ms,
             2,
         ),
         DestinationLookupCase(
             "TC-10",
             "Unsupported barcode length is rejected immediately",
-            run_settings.destination_lookup_invalid_barcode,
+            run_settings.eps60_invalid_barcode,
             "Any",
             pending_timeout,
             2,
@@ -151,7 +151,7 @@ def select_destination_lookup_cases(
 ) -> tuple[DestinationLookupCase, ...]:
     """Select one Destination Lookup case because the Delivery Network Mock switch is global."""
     available_cases = cases or build_destination_lookup_cases(run_settings)
-    selected = run_settings.destination_lookup_case.strip().casefold()
+    selected = run_settings.eps60_case.strip().casefold()
     if selected == "all":
         raise ValueError(
             "Destination Lookup requires one selected case per execution because "
@@ -222,7 +222,7 @@ def _assert_case_response(
         assert_pending_response(
             response,
             operation,
-            run_settings.destination_lookup_local_exchange_center_code,
+            run_settings.eps60_local_exchange_center_code,
         )
     elif case.expected_status == 0:
         assert_destination_lookup_success(response, operation)

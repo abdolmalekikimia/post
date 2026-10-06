@@ -378,5 +378,3 @@ def run_cps20_flow(
         raise case_failures[0]
 
     return InboundQueryResult(responses=responses, report=report)
-
-    return InboundQueryResult(responses=responses, report=report)

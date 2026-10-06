@@ -44,24 +44,14 @@ from domain.bootstrap_config.exceptions import (
 from infrastructure.persistence.in_memory_bootstrap_config_repository import (
     InMemoryConfigurationSnapshotRepository,
 )
-from application.commands.create_snapshot import (
-    CreateSnapshotCommand,
-    CreateSnapshotHandler,
-    CreateSnapshotResult,
-)
-from application.commands.publish_snapshot import (
-    PublishSnapshotCommand,
-    PublishSnapshotHandler,
-    PublishSnapshotResult,
-)
-from application.queries.get_bootstrap import (
-    GetBootstrapHandler,
-    GetBootstrapQuery,
-)
-from application.queries.get_snapshots import (
-    GetSnapshotsHandler,
-    GetSnapshotsQuery,
-)
+from application.commands.create_snapshot import CreateSnapshotCommand, CreateSnapshotResult
+from application.commands.create_snapshot.handler import CreateSnapshotHandler
+from application.commands.publish_snapshot import PublishSnapshotCommand, PublishSnapshotResult
+from application.commands.publish_snapshot.handler import PublishSnapshotHandler
+from application.queries.get_bootstrap import GetBootstrapQuery
+from application.queries.get_bootstrap.handler import GetBootstrapHandler
+from application.queries.get_snapshots import GetSnapshotsQuery
+from application.queries.get_snapshots.handler import GetSnapshotsHandler
 
 
 class FakeResponse:
@@ -683,7 +673,7 @@ def test_value_objects_valid():
     assert rc.chute_mapping["CH-01"] == "11369"
 
     # SnapshotMetadata
-    meta = SnapshotMetadata(createdBy="admin", description="test config") if hasattr(SnapshotMetadata, "createdBy") else SnapshotMetadata(created_by="admin", description="test config")
+    meta = SnapshotMetadata(created_by="admin", description="test config")
     assert meta.created_by == "admin"
 
 

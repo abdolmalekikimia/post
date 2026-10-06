@@ -291,10 +291,15 @@ def run_tc02_labels(
     official_label = _official_label(official_bag_bc, "59544")
 
     # Step 1: detect temporary label
-    _step(report, "detect_temporary_label", lambda: (
-        assert_label_no_temporary_values(temp_label)
-        if False else True  # temp label IS expected to fail
-    ), "Detection step registered")
+    def detect_temporary_label() -> None:
+        try:
+            assert_label_no_temporary_values(temp_label)
+        except AssertionError:
+            return
+        raise AssertionError("Temporary label must be rejected by validation")
+
+    _step(report, "detect_temporary_label", detect_temporary_label,
+          "Temporary label rejected as expected")
 
     # Step 2: apply official label with 28-digit bag barcode
     _step(
@@ -425,15 +430,13 @@ def run_tc05_doc_gate(
     else:
         # Verify that documentation is still missing
         missing = [name for name, ok in doc_status.items() if not ok]
+        def verify_story_still_open() -> None:
+            assert not all(doc_status.values()), "Missing documentation must keep the story open"
+
         _step(
             report,
             "verify_story_still_open",
-            lambda: (_ for _ in ()).throw(
-                FlowExecutionError(
-                    "doc_gate",
-                    f"Story correctly remains open — missing: {missing}",
-                ) if missing else None,
-            ) if False else None,
+            verify_story_still_open,
             f"Story correctly remains open — missing: {missing}",
         )
 

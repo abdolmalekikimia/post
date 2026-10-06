@@ -39,28 +39,28 @@ def build_status_override_cases(
         StatusOverrideCase(
             "TC-01",
             "Upstream Returning maps to status=3 and preserves destination",
-            run_settings.status_override_returning_barcode,
+            run_settings.eps68_returning_barcode,
             (3,),
             "original",
         ),
         StatusOverrideCase(
             "TC-02",
             "Upstream Rejected maps to status=4 and returns to origin",
-            run_settings.status_override_rejected_barcode,
+            run_settings.eps68_rejected_barcode,
             (4,),
             "origin",
         ),
         StatusOverrideCase(
             "TC-03",
             "Upstream Success keeps the standard RegisterItem result",
-            run_settings.status_override_success_barcode,
+            run_settings.eps68_success_barcode,
             (0, 1, 2),
             "standard",
         ),
         StatusOverrideCase(
             "TC-04",
             "Upstream Error keeps the standard fallback result",
-            run_settings.status_override_error_barcode,
+            run_settings.eps68_error_barcode,
             (0, 1, 2),
             "standard",
         ),
@@ -86,7 +86,7 @@ def run_status_override_negative_flow(
     cases: tuple[StatusOverrideCase, ...] | None = None,
 ) -> StatusOverrideResult:
     active_cases = cases or build_status_override_cases(run_settings)
-    selected = run_settings.status_override_case.strip().lower()
+    selected = run_settings.eps68_case.strip().lower()
     if selected != "all":
         active_cases = tuple(
             case
@@ -140,9 +140,9 @@ def run_status_override_negative_flow(
                     assert_status_override_status(
                         response,
                         expected_status=3,
-                        expected_origin_code=run_settings.status_override_origin_code,
+                        expected_origin_code=run_settings.eps68_origin_code,
                         expected_destination_code=(
-                            run_settings.status_override_original_destination_code
+                            run_settings.eps68_original_destination_code
                         ),
                         operation=f"Status Override {case.case_id}",
                         expected_correlation_id=correlation_id,
@@ -151,8 +151,8 @@ def run_status_override_negative_flow(
                     assert_status_override_status(
                         response,
                         expected_status=4,
-                        expected_origin_code=run_settings.status_override_origin_code,
-                        expected_destination_code=run_settings.status_override_origin_code,
+                        expected_origin_code=run_settings.eps68_origin_code,
+                        expected_destination_code=run_settings.eps68_origin_code,
                         operation=f"Status Override {case.case_id}",
                         expected_correlation_id=correlation_id,
                     )

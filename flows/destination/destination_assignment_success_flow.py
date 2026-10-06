@@ -71,12 +71,12 @@ def run_destination_assignment_success_cases(
     ) = success_step_names(start_step)
     # Reuse the two valid Destination Assignment barcodes already defined by the test contract.
     with_chute_barcode = numeric_barcode(
-        run_settings.destination_assignment_valid_barcode,
+        run_settings.eps71_valid_barcode,
         run_settings,
         slot=1,
     )
     without_chute_barcode = numeric_barcode(
-        run_settings.destination_assignment_second_valid_barcode,
+        run_settings.eps71_second_valid_barcode,
         run_settings,
         slot=2,
     )
@@ -104,8 +104,8 @@ def run_destination_assignment_success_cases(
         lambda: _assert_successful_assignment(
             device.assign_destination(
                 barcode=with_chute_barcode,
-                destination_center_code=run_settings.destination_assignment_destination_code,
-                chute_id=run_settings.destination_assignment_default_chute,
+                destination_center_code=run_settings.eps71_destination_code,
+                chute_id=run_settings.eps71_default_chute,
             ),
             "Destination Assignment TC-01 route.assign",
         ),
@@ -141,7 +141,7 @@ def run_destination_assignment_success_cases(
         lambda: _assert_successful_assignment(
             device.assign_destination(
                 barcode=without_chute_barcode,
-                destination_center_code=run_settings.destination_assignment_destination_code,
+                destination_center_code=run_settings.eps71_destination_code,
             ),
             "Destination Assignment TC-02 route.assign",
         ),

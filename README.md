@@ -172,3 +172,9 @@ See [`SECURITY.md`](SECURITY.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md) for co
 Explore the [`tutorial/`](tutorial/) directory for a complete step-by-step masterclass:
 - **Chapters 1–6 (`08`–`13`):** Core Python Mastery (Control Flow, OOP, Type Hints, Idioms, Dunder Methods, Standard Library).
 - **Chapters 7–13 (`01`–`07`):** SDET Architecture (Layering, Protocols, Contract Testing, Observability, Stress & CI/CD).
+
+### Public CI scope
+
+See [CI checks and limitations](docs/CI_CHECKS.md) for the offline test gate,
+Pylint policy and remaining style-review backlog. Passing CI does not prove live
+private-service integration.

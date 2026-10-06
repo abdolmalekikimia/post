@@ -117,6 +117,7 @@ CPS77_CASES = (
         case_id="TC-07",
         title="Only published snapshots returned - drafts hidden",
         category="drafts_hidden",
+        admin_setup=True,
         exchange_center_code="59544",
         expected_status=200,
     ),
@@ -125,6 +126,7 @@ CPS77_CASES = (
         case_id="TC-08",
         title="ParcelHistoryCheckEnabled=false -> Edge skips CPS-20",
         category="parcel_history_disabled",
+        admin_setup=True,
         exchange_center_code="59544",
         expected_status=200,
         expected_parcel_history_enabled=False,
@@ -134,6 +136,7 @@ CPS77_CASES = (
         case_id="TC-09",
         title="ParcelHistoryCheckEnabled=true -> Edge calls CPS-20",
         category="parcel_history_enabled",
+        admin_setup=True,
         exchange_center_code="59544",
         expected_status=200,
         expected_parcel_history_enabled=True,
@@ -160,7 +163,8 @@ def build_cps77_cases(
                 case_id=c.case_id,
                 title=c.title,
                 category=c.category,
-                exchange_center_code=run_settings.cps77_exchange_center_code,
+                exchange_center_code=(c.exchange_center_code if c.category == "invalid_center"
+                                      else run_settings.cps77_exchange_center_code),
                 version=c.version,
                 admin_setup=c.admin_setup,
                 initial_version=c.initial_version,
@@ -188,6 +192,14 @@ def run_cps77_flow(
     cases = active_cases if active_cases is not None else build_cps77_cases(run_settings)
 
     client = client_factory()
+
+    def request(**kwargs: Any) -> dict[str, Any]:
+        """Normalize the HTTP client response for bootstrap contract assertions."""
+        response = client.request(**kwargs)
+        if isinstance(response, dict):
+            return response
+        return {"httpStatusCode": response.status_code, "body": response.json()}
+
     report = ExecutionReport("CPS-77 Bootstrap Configuration Management Flow")
     report.register(*(f"{case.case_id}: {case.title}" for case in cases))
     responses: dict[str, dict[str, Any]] = {}
@@ -201,7 +213,7 @@ def run_cps77_flow(
             def make_call() -> dict[str, Any]:
                 if case.category == "bootstrap_success":
                     # TC-01: Get bootstrap (latest published)
-                    response_data = client.request(
+                    response_data = request(
                         method="GET",
                         path=f"/api/edge/bootstrap?exchangeCenterCode={case.exchange_center_code}",
                         headers={"Content-Type": "application/json"},
@@ -217,7 +229,7 @@ def run_cps77_flow(
                         raise ValueError(f"{case.case_id} requires admin_setup=True")
 
                     # First, admin creates a new draft snapshot
-                    create_resp = client.request(
+                    create_resp = request(
                         method="POST",
                         path="/api/admin/configurations",
                         payload={
@@ -248,7 +260,7 @@ def run_cps77_flow(
                     version = create_body.get("configVersion")
 
                     # Publish the snapshot
-                    publish_resp = client.request(
+                    publish_resp = request(
                         method="POST",
                         path=f"/api/admin/configurations/{snapshot_id}/publish",
                         payload={"publishedBy": "admin"},
@@ -259,7 +271,7 @@ def run_cps77_flow(
                     published_version = publish_body.get("configVersion")
 
                     # Edge fetches latest published
-                    response_data = client.request(
+                    response_data = request(
                         method="GET",
                         path=f"/api/edge/bootstrap?exchangeCenterCode={case.exchange_center_code}",
                         headers={"Content-Type": "application/json"},
@@ -274,7 +286,7 @@ def run_cps77_flow(
 
                 elif case.category == "edge_convergence":
                     # TC-03: Edge fetches latest version (already published in TC-02)
-                    response_data = client.request(
+                    response_data = request(
                         method="GET",
                         path=f"/api/edge/bootstrap?exchangeCenterCode={case.exchange_center_code}",
                         headers={"Content-Type": "application/json"},
@@ -291,7 +303,7 @@ def run_cps77_flow(
 
                 elif case.category == "invalid_center":
                     # TC-04: Invalid exchange center code
-                    response_data = client.request(
+                    response_data = request(
                         method="GET",
                         path=f"/api/edge/bootstrap?exchangeCenterCode={case.exchange_center_code}",
                         headers={"Content-Type": "application/json"},
@@ -307,7 +319,7 @@ def run_cps77_flow(
                         raise ValueError(f"{case.case_id} requires admin_setup=True")
 
                     # Create new snapshot with updated devices
-                    create_resp = client.request(
+                    create_resp = request(
                         method="POST",
                         path="/api/admin/configurations",
                         payload={
@@ -334,7 +346,7 @@ def run_cps77_flow(
                     snapshot_id = create_body.get("snapshotId")
 
                     # Publish
-                    publish_resp = client.request(
+                    publish_resp = request(
                         method="POST",
                         path=f"/api/admin/configurations/{snapshot_id}/publish",
                         payload={"publishedBy": "admin"},
@@ -345,7 +357,7 @@ def run_cps77_flow(
                     published_version = publish_body.get("configVersion")
 
                     # Edge fetches
-                    response_data = client.request(
+                    response_data = request(
                         method="GET",
                         path=f"/api/edge/bootstrap?exchangeCenterCode={case.exchange_center_code}",
                         headers={"Content-Type": "application/json"},
@@ -372,7 +384,7 @@ def run_cps77_flow(
 
                 elif case.category == "unauthorized":
                     # TC-06: Unauthorized request
-                    response_data = client.request(
+                    response_data = request(
                         method="GET",
                         path=f"/api/edge/bootstrap?exchangeCenterCode={case.exchange_center_code}",
                         headers={
@@ -391,7 +403,7 @@ def run_cps77_flow(
                         raise ValueError(f"{case.case_id} requires admin_setup=True")
 
                     # Create a DRAFT snapshot (not published)
-                    create_resp = client.request(
+                    create_resp = request(
                         method="POST",
                         path="/api/admin/configurations",
                         payload={
@@ -418,7 +430,7 @@ def run_cps77_flow(
                     assert_snapshot_created(create_resp, f"CPS-77 {case.case_id} Create Draft")
 
                     # Edge fetches - should still see previous published version, not the draft
-                    response_data = client.request(
+                    response_data = request(
                         method="GET",
                         path=f"/api/edge/bootstrap?exchangeCenterCode={case.exchange_center_code}",
                         headers={"Content-Type": "application/json"},
@@ -439,7 +451,7 @@ def run_cps77_flow(
                     if not case.admin_setup:
                         raise ValueError(f"{case.case_id} requires admin_setup=True")
 
-                    create_resp = client.request(
+                    create_resp = request(
                         method="POST",
                         path="/api/admin/configurations",
                         payload={
@@ -467,7 +479,7 @@ def run_cps77_flow(
                     create_body = create_resp.get("body", {})
                     snapshot_id = create_body.get("snapshotId")
 
-                    publish_resp = client.request(
+                    publish_resp = request(
                         method="POST",
                         path=f"/api/admin/configurations/{snapshot_id}/publish",
                         payload={"publishedBy": "admin"},
@@ -476,7 +488,7 @@ def run_cps77_flow(
                     assert_snapshot_published(publish_resp, f"CPS-77 {case.case_id} Publish")
 
                     # Edge fetches
-                    response_data = client.request(
+                    response_data = request(
                         method="GET",
                         path=f"/api/edge/bootstrap?exchangeCenterCode={case.exchange_center_code}",
                         headers={"Content-Type": "application/json"},
@@ -496,7 +508,7 @@ def run_cps77_flow(
                     if not case.admin_setup:
                         raise ValueError(f"{case.case_id} requires admin_setup=True")
 
-                    create_resp = client.request(
+                    create_resp = request(
                         method="POST",
                         path="/api/admin/configurations",
                         payload={
@@ -524,7 +536,7 @@ def run_cps77_flow(
                     create_body = create_resp.get("body", {})
                     snapshot_id = create_body.get("snapshotId")
 
-                    publish_resp = client.request(
+                    publish_resp = request(
                         method="POST",
                         path=f"/api/admin/configurations/{snapshot_id}/publish",
                         payload={"publishedBy": "admin"},
@@ -533,7 +545,7 @@ def run_cps77_flow(
                     assert_snapshot_published(publish_resp, f"CPS-77 {case.case_id} Publish")
 
                     # Edge fetches
-                    response_data = client.request(
+                    response_data = request(
                         method="GET",
                         path=f"/api/edge/bootstrap?exchangeCenterCode={case.exchange_center_code}",
                         headers={"Content-Type": "application/json"},

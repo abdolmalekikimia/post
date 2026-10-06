@@ -181,7 +181,8 @@ def run_tc01_service_crash(
             "avg_latency_ms": round(sum(latencies) / len(latencies), 2),
         }
 
-    load_result = run_step(report, "apply_production_load_live", _apply_load, f"Applied {concurrency} live concurrent requests (avg: {load_result.get('avg_latency_ms', 0) if 'load_result' in locals() else 0}ms)" if False else f"Applied {concurrency} concurrent requests with live latency")
+    load_result = run_step(report, "apply_production_load_live", _apply_load,
+                           f"Applied {concurrency} concurrent requests with live latency")
 
     # Step 2 (Proposal 4): Event timeline logging & RTO calculation
     timeline: list[dict[str, Any]] = []

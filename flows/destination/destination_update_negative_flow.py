@@ -51,7 +51,7 @@ def build_destination_update_negative_cases(
         DestinationUpdateNegativeCase(
             case_id="TC-05",
             title="Change destination after bag close",
-            barcode=run_settings.destination_update_negative_barcode,
+            barcode=run_settings.eps73_negative_barcode,
         ),
     )
 
@@ -74,7 +74,7 @@ def _register_parcel(
 ) -> dict[str, Any]:
     response = device.register_inbound(
         barcode=barcode,
-        timeout_ms=run_settings.destination_update_inbound_timeout_ms,
+        timeout_ms=run_settings.eps73_inbound_timeout_ms,
         physical_attributes={
             "weightGrams": 850,
             "dimensions": {
@@ -98,8 +98,8 @@ def _assign_initial(
 ) -> dict[str, Any]:
     response = device.assign_destination(
         barcode=barcode,
-        destination_center_code=run_settings.destination_update_initial_destination_code,
-        chute_id=run_settings.destination_update_initial_chute,
+        destination_center_code=run_settings.eps73_initial_destination_code,
+        chute_id=run_settings.eps73_initial_chute,
     )
     assert_destination_assignment_success(
         response,
@@ -114,9 +114,9 @@ def _close_initial_bag(
     barcode: str,
 ) -> dict[str, Any]:
     response = device.close_bag(
-        destination_center_code=run_settings.destination_update_initial_destination_code,
+        destination_center_code=run_settings.eps73_initial_destination_code,
         seal_number=f"SEAL-DESTINATION_UPDATE-TC05-{barcode[-6:]}",
-        transport_type=run_settings.destination_update_transport_type,
+        transport_type=run_settings.eps73_transport_type,
     )
     assert_bag_close_response(
         response,
@@ -157,7 +157,7 @@ def run_destination_update_negative_flow(
         if cases is not None
         else build_destination_update_negative_cases(run_settings)
     )
-    selected = run_settings.destination_update_case.strip().casefold()
+    selected = run_settings.eps73_case.strip().casefold()
     if selected != "all":
         active_cases = tuple(
             case
@@ -279,7 +279,7 @@ def run_destination_update_negative_flow(
         # The current Destination Update negative catalog contains TC-05. The loop keeps
         # the flow ready for additional task-oriented negative cases later.
         for case_index, case in enumerate(active_cases):
-            barcode = case.barcode or run_settings.destination_update_negative_barcode
+            barcode = case.barcode or run_settings.eps73_negative_barcode
             step_base = 5 + case_index * 4
             register = run_step(
                 report,
@@ -326,9 +326,9 @@ def run_destination_update_negative_flow(
                     device.assign_destination(
                         barcode=barcode,
                         destination_center_code=(
-                            run_settings.destination_update_closed_destination_code
+                            run_settings.eps73_closed_destination_code
                         ),
-                        chute_id=run_settings.destination_update_new_chute,
+                        chute_id=run_settings.eps73_new_chute,
                     ),
                     case,
                 ),

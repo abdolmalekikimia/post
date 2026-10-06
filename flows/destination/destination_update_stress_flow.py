@@ -49,7 +49,7 @@ def _timestamp() -> str:
 
 def _barcode(run_settings: Settings, iteration: int) -> str:
     return numeric_barcode(
-        run_settings.destination_update_barcode_prefix,
+        run_settings.eps73_barcode_prefix,
         run_settings,
         slot=100_000 + iteration,
     )
@@ -91,7 +91,7 @@ def _register(
 ) -> dict[str, Any]:
     response = device.register_inbound(
         barcode=barcode,
-        timeout_ms=run_settings.destination_update_inbound_timeout_ms,
+        timeout_ms=run_settings.eps73_inbound_timeout_ms,
         physical_attributes={
             "weightGrams": 850,
             "dimensions": {
@@ -115,8 +115,8 @@ def _assign_initial(
 ) -> dict[str, Any]:
     response = device.assign_destination(
         barcode=barcode,
-        destination_center_code=run_settings.destination_update_initial_destination_code,
-        chute_id=run_settings.destination_update_initial_chute,
+        destination_center_code=run_settings.eps73_initial_destination_code,
+        chute_id=run_settings.eps73_initial_chute,
     )
     assert_destination_assignment_success(
         response,
@@ -149,16 +149,16 @@ def _race_worker(
         if operation == "bag_close":
             response = device.close_bag(
                 destination_center_code=(
-                    run_settings.destination_update_initial_destination_code
+                    run_settings.eps73_initial_destination_code
                 ),
                 seal_number=f"SEAL-DESTINATION_UPDATE-STRESS-{barcode[-6:]}",
-                transport_type=run_settings.destination_update_transport_type,
+                transport_type=run_settings.eps73_transport_type,
             )
         else:
             response = device.assign_destination(
                 barcode=barcode,
-                destination_center_code=run_settings.destination_update_new_destination_code,
-                chute_id=run_settings.destination_update_new_chute,
+                destination_center_code=run_settings.eps73_new_destination_code,
+                chute_id=run_settings.eps73_new_chute,
             )
         return {
             "response": response,

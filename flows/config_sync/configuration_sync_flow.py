@@ -38,40 +38,40 @@ def build_configuration_sync_cases(run_settings: Settings = settings) -> dict[st
         "TC-02": ConfigurationSyncCase(
             "TC-02",
             "Device absent from synchronized list",
-            run_settings.configuration_sync_unknown_device_id,
-            run_settings.configuration_sync_active_device_token,
+            run_settings.eps40_unknown_device_id,
+            run_settings.eps40_active_device_token,
             expected_status=2,
             expected_error_contains="invalid device credentials",
         ),
         "TC-03": ConfigurationSyncCase(
             "TC-03",
             "Wrong token for a synchronized device",
-            run_settings.configuration_sync_active_device_id,
-            run_settings.configuration_sync_wrong_device_token,
+            run_settings.eps40_active_device_id,
+            run_settings.eps40_wrong_device_token,
             expected_status=2,
             expected_error_contains="invalid device credentials",
         ),
         "TC-04": ConfigurationSyncCase(
             "TC-04",
             "Inactive device after synchronization with a new version",
-            run_settings.configuration_sync_active_device_id,
-            run_settings.configuration_sync_active_device_token,
+            run_settings.eps40_active_device_id,
+            run_settings.eps40_active_device_token,
             expected_status=2,
             expected_error_contains="device not active",
         ),
         "TC-06": ConfigurationSyncCase(
             "TC-06",
             "Inactive device with valid token and IP",
-            run_settings.configuration_sync_inactive_device_id,
-            run_settings.configuration_sync_inactive_device_token,
+            run_settings.eps40_inactive_device_id,
+            run_settings.eps40_inactive_device_token,
             expected_status=2,
             expected_error_contains="device not active",
         ),
         "TC-07": ConfigurationSyncCase(
             "TC-07",
             "Active device without a registered source IP",
-            run_settings.configuration_sync_active_device_id,
-            run_settings.configuration_sync_active_device_token,
+            run_settings.eps40_active_device_id,
+            run_settings.eps40_active_device_token,
             expected_status=2,
             expected_error_contains="source ip mismatch",
             register_ip=False,
@@ -119,7 +119,7 @@ def run_configuration_sync_case(
     run_settings: Settings = settings,
 ) -> ConfigurationSyncResult:
     cases = build_configuration_sync_cases(run_settings)
-    selected_case_id = (case_id or run_settings.configuration_sync_case).upper()
+    selected_case_id = (case_id or run_settings.eps40_case).upper()
     if selected_case_id not in cases:
         available = ", ".join(cases)
         raise ValueError(

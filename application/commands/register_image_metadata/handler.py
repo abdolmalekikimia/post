@@ -8,6 +8,7 @@ from application.commands.register_image_metadata import (
     RegisterImageMetadataResult,
 )
 from domain.image_metadata.entities import SupplementaryAttachment
+from domain.image_metadata.value_objects import AttachmentId
 from domain.image_metadata.events import ImageMetadataRegistered
 from domain.image_metadata.repositories import ImageMetadataRepository
 from domain.image_metadata.exceptions import (

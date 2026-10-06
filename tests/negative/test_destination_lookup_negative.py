@@ -40,7 +40,7 @@ def test_destination_lookup_case_selection_is_explicit_because_mock_switch_is_gl
         run_settings=type(
             "RunSettings",
             (),
-            {"destination_lookup_case": "TC-06"},
+            {"eps60_case": "TC-06"},
         )(),
         cases=cases,
     )
@@ -50,7 +50,7 @@ def test_destination_lookup_case_selection_is_explicit_because_mock_switch_is_gl
 
 def test_destination_lookup_all_selection_is_rejected_with_configuration_guidance():
     cases = build_destination_lookup_cases()
-    run_settings = type("RunSettings", (), {"destination_lookup_case": "all"})()
+    run_settings = type("RunSettings", (), {"eps60_case": "all"})()
 
     with pytest.raises(ValueError, match="global switch"):
         select_destination_lookup_cases(run_settings=run_settings, cases=cases)

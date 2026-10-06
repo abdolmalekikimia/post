@@ -57,7 +57,7 @@ def _timestamp() -> str:
 
 def _barcode(run_settings: Settings, case_number: int) -> str:
     return numeric_barcode(
-        run_settings.destination_update_barcode_prefix,
+        run_settings.eps73_barcode_prefix,
         run_settings,
         slot=case_number,
     )
@@ -90,7 +90,7 @@ def _register_inbound(
 ) -> dict[str, Any]:
     response = device.register_inbound(
         barcode=barcode,
-        timeout_ms=run_settings.destination_update_inbound_timeout_ms,
+        timeout_ms=run_settings.eps73_inbound_timeout_ms,
         physical_attributes={
             "weightGrams": 850,
             "dimensions": {
@@ -138,7 +138,7 @@ def _close_and_assert_count(
     response = device.close_bag(
         destination_center_code=destination,
         seal_number=f"SEAL-DESTINATION_UPDATE-{case_id}-{barcode[-6:]}",
-        transport_type=run_settings.destination_update_transport_type,
+        transport_type=run_settings.eps73_transport_type,
         chute_ids=chute_ids,
     )
     assert_bag_close_response(
@@ -198,8 +198,8 @@ def run_destination_update_success_cases(
         lambda: _assign(
             device,
             barcode,
-            run_settings.destination_update_initial_destination_code,
-            run_settings.destination_update_initial_chute,
+            run_settings.eps73_initial_destination_code,
+            run_settings.eps73_initial_chute,
         ),
         "مقصد اولیهٔ Destination Update/TC-01 تخصیص داده شد.",
     )
@@ -212,8 +212,8 @@ def run_destination_update_success_cases(
         lambda: _assign(
             device,
             barcode,
-            run_settings.destination_update_new_destination_code,
-            run_settings.destination_update_new_chute,
+            run_settings.eps73_new_destination_code,
+            run_settings.eps73_new_chute,
         ),
         "مقصد و شوتر Destination Update/TC-01 جایگزین شد.",
     )
@@ -228,7 +228,7 @@ def run_destination_update_success_cases(
             run_settings,
             barcode,
             "TC-01-old",
-            run_settings.destination_update_initial_destination_code,
+            run_settings.eps73_initial_destination_code,
             expected_count=0,
         ),
         "مرسوله در مقصد قدیمی Destination Update/TC-01 پیدا نشد.",
@@ -244,9 +244,9 @@ def run_destination_update_success_cases(
             run_settings,
             barcode,
             "TC-01-new",
-            run_settings.destination_update_new_destination_code,
+            run_settings.eps73_new_destination_code,
             minimum_count=1,
-            chute_ids=[run_settings.destination_update_new_chute],
+            chute_ids=[run_settings.eps73_new_chute],
         ),
         "مرسوله با مقصد و شوتر جدید Destination Update/TC-01 پیدا شد.",
     )
@@ -278,8 +278,8 @@ def run_destination_update_success_cases(
         lambda: _assign(
             device,
             barcode,
-            run_settings.destination_update_initial_destination_code,
-            run_settings.destination_update_initial_chute,
+            run_settings.eps73_initial_destination_code,
+            run_settings.eps73_initial_chute,
         ),
         "مقصد اولیهٔ Destination Update/TC-02 تخصیص داده شد.",
     )
@@ -292,7 +292,7 @@ def run_destination_update_success_cases(
         lambda: _assign(
             device,
             barcode,
-            run_settings.destination_update_new_destination_code,
+            run_settings.eps73_new_destination_code,
             None,
         ),
         "مقصد Destination Update/TC-02 بدون شوتر جدید جایگزین شد.",
@@ -308,9 +308,9 @@ def run_destination_update_success_cases(
             run_settings,
             barcode,
             "TC-02-old-chute",
-            run_settings.destination_update_new_destination_code,
+            run_settings.eps73_new_destination_code,
             expected_count=0,
-            chute_ids=[run_settings.destination_update_initial_chute],
+            chute_ids=[run_settings.eps73_initial_chute],
         ),
         "مرسوله با شوتر قبلی Destination Update/TC-02 پیدا نشد.",
     )
@@ -325,7 +325,7 @@ def run_destination_update_success_cases(
             run_settings,
             barcode,
             "TC-02-new",
-            run_settings.destination_update_new_destination_code,
+            run_settings.eps73_new_destination_code,
             minimum_count=1,
         ),
         "مرسولهٔ بدون شوتر Destination Update/TC-02 پیدا شد.",
@@ -358,8 +358,8 @@ def run_destination_update_success_cases(
         lambda: _assign(
             device,
             barcode,
-            run_settings.destination_update_initial_destination_code,
-            run_settings.destination_update_initial_chute,
+            run_settings.eps73_initial_destination_code,
+            run_settings.eps73_initial_chute,
         ),
         "مقصد اولیهٔ Destination Update/TC-03 تخصیص داده شد.",
     )
@@ -372,8 +372,8 @@ def run_destination_update_success_cases(
         lambda: _assign(
             device,
             barcode,
-            run_settings.destination_update_initial_destination_code,
-            run_settings.destination_update_initial_chute,
+            run_settings.eps73_initial_destination_code,
+            run_settings.eps73_initial_chute,
         ),
         "تخصیص تکراری Destination Update/TC-03 بدون تغییر موفق شد.",
     )
@@ -388,9 +388,9 @@ def run_destination_update_success_cases(
             run_settings,
             barcode,
             "TC-03",
-            run_settings.destination_update_initial_destination_code,
+            run_settings.eps73_initial_destination_code,
             minimum_count=1,
-            chute_ids=[run_settings.destination_update_initial_chute],
+            chute_ids=[run_settings.eps73_initial_chute],
         ),
         "مقصد و شوتر Destination Update/TC-03 بدون تغییر باقی ماند.",
     )
@@ -421,8 +421,8 @@ def run_destination_update_success_cases(
         lambda: _assign(
             device,
             barcode,
-            run_settings.destination_update_initial_destination_code,
-            run_settings.destination_update_initial_chute,
+            run_settings.eps73_initial_destination_code,
+            run_settings.eps73_initial_chute,
         ),
         "مقصد اولیهٔ Destination Update/TC-04 تخصیص داده شد.",
     )
@@ -435,8 +435,8 @@ def run_destination_update_success_cases(
         lambda: _assign(
             device,
             barcode,
-            run_settings.destination_update_initial_destination_code,
-            run_settings.destination_update_alternate_chute,
+            run_settings.eps73_initial_destination_code,
+            run_settings.eps73_alternate_chute,
         ),
         "درخواست Destination Update/TC-04 با شوتر متفاوت موفق شد.",
     )
@@ -451,9 +451,9 @@ def run_destination_update_success_cases(
             run_settings,
             barcode,
             "TC-04-alternate",
-            run_settings.destination_update_initial_destination_code,
+            run_settings.eps73_initial_destination_code,
             expected_count=0,
-            chute_ids=[run_settings.destination_update_alternate_chute],
+            chute_ids=[run_settings.eps73_alternate_chute],
         ),
         "شوتر جایگزین Destination Update/TC-04 ذخیره نشده بود.",
     )
@@ -468,9 +468,9 @@ def run_destination_update_success_cases(
             run_settings,
             barcode,
             "TC-04-original",
-            run_settings.destination_update_initial_destination_code,
+            run_settings.eps73_initial_destination_code,
             minimum_count=1,
-            chute_ids=[run_settings.destination_update_initial_chute],
+            chute_ids=[run_settings.eps73_initial_chute],
         ),
         "شوتر اصلی Destination Update/TC-04 بدون تغییر باقی ماند.",
     )

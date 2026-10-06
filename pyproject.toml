@@ -3,3 +3,16 @@ name = "sorting-device-postal-integration-tests"
 version = "0.1.0"
 description = "Python tests for sorting device and postal system integration"
 requires-python = ">=3.11"
+
+# Correctness gate; style and complexity are reviewed separately.
+[tool.pylint.main]
+persistent = false
+
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = [
+    "F", "E", "unreachable", "dangerous-default-value", "duplicate-key",
+    "assert-on-tuple", "exec-used", "eval-used", "confusing-with-statement",
+    "self-assigning-variable", "assert-on-string-literal", "modified-iterating-list",
+    "using-constant-test", "condition-evals-to-constant",
+]

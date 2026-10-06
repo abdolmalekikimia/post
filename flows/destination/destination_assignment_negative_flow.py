@@ -38,12 +38,12 @@ class DestinationAssignmentResult:
 
 
 def _valid_barcode(run_settings: Settings) -> str:
-    return run_settings.destination_assignment_valid_barcode
+    return run_settings.eps71_valid_barcode
 
 
 def _case_barcode(run_settings: Settings, number: int) -> str:
     """Create a unique valid 24-digit barcode for one isolated Case."""
-    return f"{run_settings.destination_assignment_valid_barcode[:-6]}{number:06d}"
+    return f"{run_settings.eps71_valid_barcode[:-6]}{number:06d}"
 
 
 def build_destination_assignment_negative_cases(
@@ -61,13 +61,13 @@ def build_destination_assignment_negative_cases(
             "TC-03-missing",
             "Missing barcode",
             None,
-            run_settings.destination_assignment_destination_code,
+            run_settings.eps71_destination_code,
         ),
         DestinationAssignmentCase(
             "TC-03-empty",
             "Empty barcode",
             "",
-            run_settings.destination_assignment_destination_code,
+            run_settings.eps71_destination_code,
         ),
         DestinationAssignmentCase(
             "TC-04-missing",
@@ -108,20 +108,20 @@ def build_destination_assignment_negative_cases(
             "TC-07",
             "Barcode has unsupported length or structure",
             "12345",
-            run_settings.destination_assignment_destination_code,
+            run_settings.eps71_destination_code,
         ),
         DestinationAssignmentCase(
             "TC-08",
             "Valid barcode without inbound history",
-            run_settings.destination_assignment_unregistered_barcode,
-            run_settings.destination_assignment_destination_code,
+            run_settings.eps71_unregistered_barcode,
+            run_settings.eps71_destination_code,
         ),
         DestinationAssignmentCase(
             "TC-09",
             "Destination assignment after the parcel was bagged",
             _case_barcode(run_settings, 409),
-            run_settings.destination_assignment_destination_code,
-            run_settings.destination_assignment_default_chute,
+            run_settings.eps71_destination_code,
+            run_settings.eps71_default_chute,
             setup_registered_parcel=True,
             setup_bag_close=True,
         ),
@@ -129,8 +129,8 @@ def build_destination_assignment_negative_cases(
             "TC-13",
             "Destination assignment after bag close boundary",
             _case_barcode(run_settings, 413),
-            run_settings.destination_assignment_destination_code,
-            run_settings.destination_assignment_default_chute,
+            run_settings.eps71_destination_code,
+            run_settings.eps71_default_chute,
             setup_registered_parcel=True,
             setup_bag_close=True,
         ),
@@ -172,8 +172,8 @@ def _assign_parcel(
 ) -> dict[str, Any]:
     response = device.assign_destination(
         barcode=barcode,
-        destination_center_code=run_settings.destination_assignment_destination_code,
-        chute_id=run_settings.destination_assignment_default_chute,
+        destination_center_code=run_settings.eps71_destination_code,
+        chute_id=run_settings.eps71_default_chute,
     )
     assert_destination_assignment_success(
         response,
@@ -188,9 +188,9 @@ def _bag_parcel(
     run_settings: Settings,
 ) -> dict[str, Any]:
     response = device.close_bag(
-        destination_center_code=run_settings.destination_assignment_destination_code,
+        destination_center_code=run_settings.eps71_destination_code,
         seal_number=f"SEAL-DESTINATION_ASSIGNMENT-{barcode[-6:]}",
-        transport_type=run_settings.destination_assignment_transport_type,
+        transport_type=run_settings.eps71_transport_type,
     )
     assert_bag_close_response(
         response,
@@ -214,7 +214,7 @@ def run_destination_assignment_negative_flow(
         if cases is not None
         else build_destination_assignment_negative_cases(run_settings)
     )
-    selected = run_settings.destination_assignment_case.strip().lower()
+    selected = run_settings.eps71_case.strip().lower()
     if selected != "all":
         active_cases = tuple(
             case

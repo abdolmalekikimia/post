@@ -112,7 +112,7 @@ def test_cps70_flow_with_mock_client():
             return mock_resp
 
         token = auth.split("Bearer ")[1]
-        if "INVALID_TAMPERED" in token or "fake" in token:
+        if token not in {"admin-test-token", "edge-test-token"}:
             mock_resp.status_code = 401
             mock_resp.text = '{"error": "Invalid signature"}'
             mock_resp.json.return_value = {"error": "Invalid signature"}

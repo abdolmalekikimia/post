@@ -13,19 +13,10 @@ from interfaces.dto import (
     to_register_command_dto,
     to_response_dto,
 )
-from application.commands.register_image_metadata import (
-    RegisterImageMetadataCommand,
-    RegisterImageMetadataResult,
-    RegisterImageMetadataHandler,
-)
-from application.queries.get_image_metadata import (
-    GetImageMetadataByIdQuery,
-    GetImageMetadataByObjectKeyQuery,
-    GetImageMetadataByParcelQuery,
-    GetImageMetadataAdvancedQuery,
-    GetImageMetadataCountQuery,
-    GetImageMetadataHandler,
-)
+from application.commands.register_image_metadata import RegisterImageMetadataCommand, RegisterImageMetadataResult
+from application.commands.register_image_metadata.handler import RegisterImageMetadataHandler
+from application.queries.get_image_metadata import GetImageMetadataByIdQuery, GetImageMetadataByObjectKeyQuery, GetImageMetadataByParcelQuery, GetImageMetadataAdvancedQuery, GetImageMetadataCountQuery
+from application.queries.get_image_metadata.handler import GetImageMetadataHandler
 from domain.image_metadata.value_objects import (
     AttachmentId,
     ObjectKey,

@@ -12,10 +12,8 @@ from interfaces.dto.edge_health_dto import (
     HealthSummaryResponseDTO,
     ErrorResponseDTO,
 )
-from application.commands.receive_heartbeat import (
-    ReceiveHeartbeatCommand,
-    ReceiveHeartbeatHandler,
-)
+from application.commands.receive_heartbeat import ReceiveHeartbeatCommand
+from application.commands.receive_heartbeat.handler import ReceiveHeartbeatHandler
 from application.queries.get_edge_health import (
     GetEdgeHealthQuery,
     GetAllEdgeHealthQuery,

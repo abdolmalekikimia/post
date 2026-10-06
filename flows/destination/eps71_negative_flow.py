@@ -16,7 +16,7 @@ from clients.signalr_client import DeviceWebSocketClient
 from config.settings import Settings, settings
 from services.admin_service import AdminService
 from services.device_service import DeviceService
-from utils.step_report import ExecutionReport, exchange_detail, run_step
+from utils.step_report import FlowExecutionError, ExecutionReport, exchange_detail, run_step
 from utils.test_data import numeric_barcode
 
 

@@ -7,6 +7,7 @@ from typing import Optional, List, Any
 
 from domain.bag_dispatch.value_objects import (
     BagBarcode,
+    IdempotencyKey,
     DispatchId,
     ExchangeCenterCode,
 )
@@ -85,6 +86,15 @@ class BagRepository(ABC):
     """
 
     @abstractmethod
+    def find_by_idempotency_key(self, idempotency_key: IdempotencyKey) -> Optional["Bag"]:
+        """Find a previously registered entity by its idempotency key."""
+        ...
+
+    def exists_by_idempotency_key(self, idempotency_key: IdempotencyKey) -> bool:
+        """Check whether this request has already been registered."""
+        return self.find_by_idempotency_key(idempotency_key) is not None
+
+    @abstractmethod
     def save(self, bag: "Bag") -> None:
         """
         Save new Bag
@@ -138,6 +148,15 @@ class DispatchRepository(ABC):
     - SqlDispatchRepository (Infrastructure)
     - InMemoryDispatchRepository (Testing)
     """
+
+    @abstractmethod
+    def find_by_idempotency_key(self, idempotency_key: IdempotencyKey) -> Optional["Dispatch"]:
+        """Find a previously registered entity by its idempotency key."""
+        ...
+
+    def exists_by_idempotency_key(self, idempotency_key: IdempotencyKey) -> bool:
+        """Check whether this request has already been registered."""
+        return self.find_by_idempotency_key(idempotency_key) is not None
 
     @abstractmethod
     def save(self, dispatch: "Dispatch") -> None:

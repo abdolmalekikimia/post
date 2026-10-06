@@ -37,8 +37,6 @@ def test_eps60_successful_destination_lookup():
     if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS60_SUCCESS", "0") != "1":
         pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS60_SUCCESS=1 to run EPS-60 success scenario")
     result = run_eps60_success_flow()
-    if hasattr(result, "report") and result.report:
-        result.report.print()
     assert set(result.responses) == {"TC-08"}
 
 
@@ -72,8 +70,6 @@ def test_eps71_positive_destination_assignment_cases():
     if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS71_SUCCESS", "0") != "1":
         pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS71_SUCCESS=1 to run EPS-71 positive scenarios")
     result = run_eps71_success_flow()
-    if hasattr(result, "report") and result.report:
-        result.report.print()
     assert set(result.responses) == {"TC-01_with_chute", "TC-02_without_chute"}
 
 
@@ -103,8 +99,6 @@ def test_eps73_positive_destination_update_cases():
     if os.getenv("RUN_SUCCESS", "0") != "1" and os.getenv("RUN_EPS73_SUCCESS", "0") != "1":
         pytest.skip("Set RUN_SUCCESS=1 or RUN_EPS73_SUCCESS=1 to run EPS-73 positive scenarios")
     result = run_eps73_success_flow()
-    if hasattr(result, "report") and result.report:
-        result.report.print()
     assert set(result.responses) == {"TC-01", "TC-02", "TC-03", "TC-04"}
 
 

@@ -8,10 +8,8 @@ from interfaces.dto.bootstrap_dto import (
     ErrorResponseDTO,
     to_bootstrap_response,
 )
-from application.queries.get_bootstrap import (
-    GetBootstrapHandler,
-    GetBootstrapQuery,
-)
+from application.queries.get_bootstrap import GetBootstrapQuery
+from application.queries.get_bootstrap.handler import GetBootstrapHandler
 from domain.bootstrap_config.value_objects import (
     ConfigVersion,
     ExchangeCenterCode,
