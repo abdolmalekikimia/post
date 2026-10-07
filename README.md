@@ -1,12 +1,25 @@
 # 📦 Core Post Sorting & Integration Automation Platform
 
+## QA ownership and AI-generated implementation
+
+This portfolio reflects my QA work, business-workflow context, test-scope direction,
+execution and review of results against requirements. I guided the automation
+approach and used AI tools to generate the code implementation; I did not
+independently write the Python code or implement the framework from scratch.
+
+The code is evidence of an AI-assisted QA workflow, not a claim of independently
+assessed Python programming or software-engineering proficiency. Scenario proposals,
+technical analysis and documentation also used AI assistance. Only the executed
+checks and documented evidence support the stated validation scope.
+
+
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![Pytest](https://img.shields.io/badge/Tested%20with-pytest-0A9EDC)
 ![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20DDD%20%2F%20Layered-orange)
 ![Protocols](https://img.shields.io/badge/Protocols-REST%20%7C%20SignalR%20WebSocket-blue)
 ![CI](https://github.com/abdolmalekikimia/post/actions/workflows/qa.yml/badge.svg)
 
-A sanitized, production-grade **QA / SDET & Backend Engineering Portfolio Project** demonstrating Clean Architecture, Domain-Driven Design (DDD), resilient protocol engines (REST & SignalR/WebSocket), core parcel sorting integration flows, chaos engineering, and step-level test observability.
+A sanitized **QA and AI-assisted Test Automation Portfolio Project** demonstrating Clean Architecture, Domain-Driven Design (DDD), resilient protocol engines (REST & SignalR/WebSocket), core parcel sorting integration flows, resilience simulations, and step-level test observability.
 
 This repository is a portfolio representation designed to demonstrate advanced software quality engineering practices. End-to-end and stress tests run against configurable mock or demo services.
 
