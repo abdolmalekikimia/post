@@ -1,0 +1,30 @@
+.venv/
+__pycache__/
+*.pyc
+*.py[cod]
+.pytest_cache/
+.idea/
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+config/test.env
+config/*-local.env
+postman/*-local.postman_environment.json
+
+# Logs, reports, coverage, and local test artifacts
+*.log
+logs/
+reports/
+test-results/
+allure-results/
+allure-report/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.junit.xml
+*.trx
+*.tmp
+*.local.*

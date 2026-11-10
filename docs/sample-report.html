@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sample story report</title><style>
+:root{--bg:#0f172a;--bg2:#1e293b;--border:#334155;--text:#e2e8f0;--text2:#cbd5e1;--text3:#94a3b8;--accent:#60a5fa;--green:#34d399;--red:#f87171;--yellow:#fbbf24;--blue:#60a5fa;--pink:#f472b6;--radius:10px}
+body{margin:0;padding:24px 16px;background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;line-height:1.6;max-width:1000px;margin:auto}
+.note{background:#422006;border:1px solid #92400e;color:#fde68a;padding:10px 14px;border-radius:8px;margin-bottom:16px;font-size:13px}
+
+.sum-box { margin-bottom: 28px; }
+.sum-verdict { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; font-size: 16px; margin-bottom: 14px; }
+.sum-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.sum-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.sum-card b { display: block; font-size: 26px; }
+.sum-card span { color: var(--text3); font-size: 12px; }
+.sum-h { font-size: 16px; color: var(--text2); margin: 18px 0 8px; }
+.sum-table { width: 100%; border-collapse: collapse; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; font-size: 13px; }
+.sum-table th, .sum-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.sum-table th { color: var(--text3); font-weight: 600; }
+.sum-table details summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+.sum-table details div { font-size: 11px; color: var(--text3); }
+.sum-note { color: var(--text3); font-size: 12px; margin-top: 8px; }
+@media (max-width: 560px) { .sum-table th, .sum-table td { padding: 6px; } }
+</style></head><body>
+<h1>Sample story report</h1>
+<div class="note">Illustrative sample. It shows the format of the generated first page (verdict, failures with causes, skips by reason). The numbers are an example, not a real run.</div>
+
+<div class="sum-box">
+<div class="sum-verdict"><b>Verdict:</b> Of 6 failures, 4 probably a product bug or contract conflict. 3 tests were skipped because a required input was missing.</div>
+<div class="sum-cards"><div class="sum-card"><b style="color:var(--green)">71</b><span>Passed</span></div><div class="sum-card"><b style="color:var(--red)">4</b><span>Probably a product bug</span></div><div class="sum-card"><b style="color:var(--yellow)">0</b><span>Test or data weakness</span></div><div class="sum-card"><b style="color:var(--pink)">0</b><span>Not investigated</span></div><div class="sum-card"><b style="color:var(--blue)">3</b><span>Skipped (waiting for input)</span></div><div class="sum-card"><b style="color:var(--text)">80</b><span>All tests</span></div></div>
+<h2 class="sum-h">Failures and their causes</h2><table class="sum-table"><tr><th>Type</th><th>What scenario it checks</th><th>Why it failed</th><th>Count</th></tr><tr class="sum-bug"><td>🐞 Probably a product bug or a contract conflict</td><td>A parcel without a barcode is registered with an empty barcode field and gets no invented destination</td><td>The Edge rejects an empty barcode; the requirement is that it is registered and routed to the disordered chute.</td><td>1<details><summary>Tests</summary><div>3_destination/test_no_barcode.py::test_no_barcode_01_x</div></details></td></tr><tr class="sum-bug"><td>🐞 Probably a product bug or a contract conflict</td><td>String serviceTypes get a validation message, not &quot;error on the server&quot;</td><td>String serviceTypes get no validation reply and end in &quot;error on the server&quot;.</td><td>1<details><summary>Tests</summary><div>4_bagging/test_close_bag.py::test_close_bag_08_string_service_types_get_a_validation_answer_not_a_server_error[single-string]</div></details></td></tr><tr class="sum-bug"><td>🐞 Probably a product bug or a contract conflict</td><td>A code with a leading zero stays exactly the same</td><td>Error code 0042 reaches the device as 42; the leading zero is lost in the Edge database.</td><td>1<details><summary>Tests</summary><div>4_bagging/test_postal_contracts.py::test_postal_contracts_02_leading_zero_code_is_kept_exactly</div></details></td></tr><tr class="sum-bug"><td>🐞 Probably a product bug or a contract conflict</td><td>A special chute code (5 English letters) is accepted as a destination</td><td>The Edge treats a special chute code (even AABBB, which is in its configuration) as an invalid code; special chutes are not implemented in the deployed Edge.</td><td>1<details><summary>Tests</summary><div>3_destination/test_no_barcode.py::test_no_barcode_03_special_chute_code_is_accepted_as_destination[AABBB]</div></details></td></tr><tr class="sum-wait"><td>⏸ Waiting for input</td><td>serviceTypes as a numeric array (1 to 6) is accepted</td><td>The Edge answers &quot;not supported&quot; for every serviceTypes number; service-type filtering is not built yet.</td><td>2<details><summary>Tests</summary><div>4_bagging/test_close_bag.py::test_close_bag_01_service_types_as_a_numeric_array_is_accepted[one-service]</div><div>4_bagging/test_close_bag.py::test_close_bag_01_service_types_as_a_numeric_array_is_accepted[two-services]</div></details></td></tr></table>
+<div class="sum-note">There is no comparison with a previous run yet; only this run is in the report.</div>
+<h2 class="sum-h">Skipped tests, by reason</h2><table class="sum-table"><tr><th>Reason</th><th>Count</th></tr><tr><td>A setting or feature is missing in Core or the deployed Edge (the Edge is older than the documents, or Core does not publish it)</td><td>2</td></tr><tr><td>An open decision or contract, or real postal data</td><td>1</td></tr></table>
+<div class="sum-note">Each failure's cause is read from the table of known causes (scripts/report_summary.py); a new failure stays "Not investigated" until it is looked into.</div>
+</div></body></html>

@@ -1,0 +1,446 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum
+import os
+import time
+import json
+import re
+from typing import Callable, TypeVar
+
+
+def sanitize_text(text: str | object) -> str:
+    """Replace long Base64 strings (such as PNG labels or attachments) in arbitrary text."""
+    if not isinstance(text, str):
+        text = str(text)
+
+    def _sub_b64(m: re.Match[str]) -> str:
+        s = m.group(0)
+        kb_size = len(s.encode("utf-8")) / 1024
+        return f"<Base64 Data: {kb_size:.1f} KB, prefix='{s[:25]}...'>"
+
+    return re.sub(r"iVBORw0KGgo[A-Za-z0-9+/=]{60,}", _sub_b64, text)
+
+
+class StepStatus(str, Enum):
+    PENDING = "PENDING"
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    UNVERIFIED = "UNVERIFIED"
+    NOT_EXECUTED = "NOT_EXECUTED"
+    SETUP_PASSED = "SETUP_PASSED"
+
+
+@dataclass
+class StepRecord:
+    name: str
+    status: StepStatus = StepStatus.PENDING
+    duration_seconds: float = 0.0
+    message: str = ""
+    detail: object = ""
+    payload_sent: object = None
+    response_received: object = None
+    expectation: str = "NOT_CHECKED"
+    error: str = ""
+    is_precondition: bool = False
+
+
+class UnverifiedPreconditionError(AssertionError):
+    """A status expectation depends on server-side fixture state we could not prove."""
+
+
+def is_setup_step(name: str) -> bool:
+    """Identify whether a step is infrastructure setup / precondition vs business scenario."""
+    low = name.lower()
+    return any(
+        k in low
+        for k in (
+            "precondition",
+            "setup",
+            "prepare",
+            "admin login",
+            "update device ip",
+            "register device ip",
+            "connect/handshake",
+            "websocket connect",
+            "signalr connect",
+        )
+    )
+
+
+@dataclass
+class ExecutionReport:
+    flow_name: str
+    records: list[StepRecord] = field(default_factory=list)
+    _printed: bool = field(default=False, init=False, repr=False)
+
+    def register(self, *step_names: str) -> None:
+        for name in step_names:
+            is_pre = is_setup_step(name)
+            self.records.append(StepRecord(name=name, is_precondition=is_pre))
+
+    def mark_scenario(self, *step_names: str) -> None:
+        """Override name-based setup detection for negative business checks."""
+        for name in step_names:
+            self._record(name).is_precondition = False
+
+    def _record(self, step_name: str) -> StepRecord:
+        for record in self.records:
+            if record.name == step_name:
+                return record
+        # Auto-register step on the fly if not pre-registered to ensure 100% reliability
+        is_pre = is_setup_step(step_name)
+        new_record = StepRecord(name=step_name, is_precondition=is_pre)
+        self.records.append(new_record)
+        return new_record
+
+    def passed(
+        self,
+        step_name: str,
+        duration_seconds: float,
+        message: str = "",
+        detail: object = "",
+    ) -> None:
+        record = self._record(step_name)
+        record.status = StepStatus.SETUP_PASSED if record.is_precondition else StepStatus.PASSED
+        record.duration_seconds = duration_seconds
+        record.message = message
+        record.detail = detail
+        self._capture_exchange(record, detail)
+        record.expectation = "SETUP" if record.is_precondition else "PASS"
+
+    def failed(
+        self,
+        step_name: str,
+        duration_seconds: float,
+        message: str,
+        detail: object = "",
+    ) -> None:
+        record = self._record(step_name)
+        record.status = StepStatus.FAILED
+        record.duration_seconds = duration_seconds
+        record.message = message
+        record.detail = detail
+        self._capture_exchange(record, detail)
+        record.expectation = "FAIL"
+        record.error = message
+
+    def unverified(
+        self, step_name: str, duration_seconds: float, message: str, detail: object = ""
+    ) -> None:
+        record = self._record(step_name)
+        record.status = StepStatus.UNVERIFIED
+        record.duration_seconds = duration_seconds
+        record.message = message
+        record.detail = detail
+        self._capture_exchange(record, detail)
+        record.expectation = "UNVERIFIED_PRECONDITION"
+        record.error = message
+
+    @staticmethod
+    def _capture_exchange(record: StepRecord, detail: object) -> None:
+        if not isinstance(detail, dict):
+            if detail not in ("", None):
+                record.response_received = detail
+            return
+
+        exchange = detail
+        nested_exchange = detail.get("lastExchange")
+        if isinstance(nested_exchange, dict):
+            exchange = {**nested_exchange, **detail}
+
+        record.payload_sent = exchange.get("payloadSent")
+        record.response_received = exchange.get("responseReceived")
+        if (
+            record.payload_sent is None
+            and record.response_received is None
+            and "error" not in detail
+        ):
+            record.response_received = detail
+        error = detail.get("error")
+        if error:
+            record.error = str(error)
+
+    def mark_remaining_not_executed(self) -> None:
+        for record in self.records:
+            if record.status == StepStatus.PENDING:
+                record.status = StepStatus.NOT_EXECUTED
+                record.message = "Stopped because a previous step failed"
+                record.expectation = "NOT_CHECKED"
+                record.detail = ""
+
+    def summary(self) -> dict[str, int]:
+        res = {
+            StepStatus.PASSED.value: sum(
+                record.status == StepStatus.PASSED for record in self.records
+            ),
+            StepStatus.FAILED.value: sum(
+                record.status == StepStatus.FAILED for record in self.records
+            ),
+            StepStatus.NOT_EXECUTED.value: sum(
+                record.status in (StepStatus.PENDING, StepStatus.NOT_EXECUTED)
+                for record in self.records
+            ),
+        }
+        setup_count = sum(record.status == StepStatus.SETUP_PASSED for record in self.records)
+        if setup_count > 0:
+            res[StepStatus.SETUP_PASSED.value] = setup_count
+        unverified_count = sum(record.status == StepStatus.UNVERIFIED for record in self.records)
+        if unverified_count:
+            res[StepStatus.UNVERIFIED.value] = unverified_count
+        return res
+
+    def render(self) -> str:
+        self.mark_remaining_not_executed()
+        lines = [f"Execution report: {self.flow_name}"]
+        for index, record in enumerate(self.records, start=1):
+            if record.status == StepStatus.SETUP_PASSED:
+                status_badge = "\033[1;36m[SETUP]\033[0m"
+            elif record.status == StepStatus.PASSED:
+                status_badge = "\033[1;32m[PASS]\033[0m"
+            elif record.status == StepStatus.FAILED:
+                status_badge = "\033[1;31m[FAIL]\033[0m"
+            elif record.status == StepStatus.UNVERIFIED:
+                status_badge = "\033[1;33m[UNVERIFIED]\033[0m"
+            else:
+                status_badge = "\033[1;33m[NOT_CHECKED]\033[0m"
+
+            lines.append(
+                f"{index:02d}. {status_badge} {record.name}"
+            )
+            if record.payload_sent is not None:
+                lines.append(
+                    f"    payloadSent: {format_detail(record.payload_sent)}"
+                )
+            if record.response_received is not None:
+                lines.append(
+                    "    responseReceived: "
+                    f"{format_detail(record.response_received)}"
+                )
+            elif record.error and record.payload_sent is not None:
+                lines.append(
+                    "    responseReceived: "
+                    f"{format_detail({'error': record.error})}"
+                )
+            elif record.error:
+                lines.append(f"    error: {record.error}")
+            if record.error:
+                lines.append(f"    \033[1;31m[onError]: {record.error}\033[0m")
+            if isinstance(record.detail, dict) and record.detail.get("evidence"):
+                lines.append(f"    evidence: {format_detail(record.detail['evidence'])}")
+            lines.append(f"    expected: {record.expectation}")
+
+        summary = self.summary()
+        setup_count = summary.get('SETUP_PASSED', 0)
+        pass_count = summary.get('PASSED', 0)
+        fail_count = summary.get('FAILED', 0)
+        unverified_count = summary.get('UNVERIFIED', 0)
+        not_checked_count = summary.get('NOT_EXECUTED', 0)
+        
+        result_parts = []
+        if setup_count > 0:
+            result_parts.append(f"\033[1;36mSETUP={setup_count}\033[0m")
+        result_parts.append(f"\033[1;32mPASS={pass_count}\033[0m")
+        result_parts.append(f"\033[1;31mFAIL={fail_count}\033[0m")
+        if unverified_count:
+            result_parts.append(f"\033[1;33mUNVERIFIED={unverified_count}\033[0m")
+        result_parts.append(f"\033[1;33mNOT_CHECKED={not_checked_count}\033[0m")
+        
+        lines.append(f"Result: {', '.join(result_parts)}")
+        return "\n".join(lines)
+
+    def print(self) -> None:
+        self._printed = True
+        rendered = self.render()
+        try:
+            print(rendered)
+        except UnicodeEncodeError:
+            import sys
+            if hasattr(sys.stdout, "buffer"):
+                sys.stdout.buffer.write((rendered + "\n").encode("utf-8", errors="replace"))
+                sys.stdout.flush()
+            else:
+                print(rendered.encode("ascii", errors="replace").decode("ascii"))
+
+
+class FlowExecutionError(AssertionError):
+    def __init__(
+        self,
+        flow_name: str,
+        failed_step: str,
+        cause: Exception,
+        report: ExecutionReport,
+    ) -> None:
+        self.flow_name = flow_name
+        self.failed_step = failed_step
+        self.cause = cause
+        self.report = report
+
+        # Auto-print report if not already printed so table is always rendered
+        if not getattr(report, "_printed", False):
+            report.print()
+
+        cause_name = type(cause).__name__
+        cause_str = sanitize_text(str(cause))
+
+        # High-visibility BOLD error formatting for terminal
+        RED_BOLD = "\033[1;31m"
+        YELLOW_BOLD = "\033[1;33m"
+        RESET = "\033[0m"
+
+        formatted_msg = (
+            f"\n\n{'=' * 75}\n"
+            f"{RED_BOLD}>>> [onError]: {cause_name}: {cause_str} <<<{RESET}\n"
+            f"{YELLOW_BOLD}    Flow: '{flow_name}' stopped at '{failed_step}'{RESET}\n"
+            f"{'=' * 75}\n"
+        )
+        super().__init__(formatted_msg)
+
+
+T = TypeVar("T")
+Detail = object | Callable[[T], object]
+ErrorDetail = Callable[[Exception], object]
+
+
+def evidence_is_optional() -> bool:
+    """Server-side evidence (Core/Postal logs, database) is a bonus: when it cannot be observed the device response
+    alone decides the verdict, and the evidence step stays visible in the report as UNVERIFIED. Contradicting evidence
+    is still a failure. Set QA_EVIDENCE_OPTIONAL=false to make the evidence mandatory again."""
+    return os.getenv("QA_EVIDENCE_OPTIONAL", "true").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def is_optional_evidence_gap(error: Exception) -> bool:
+    """True for an evidence step that was only unverifiable (not contradicted) and may not decide the verdict."""
+    cause = error.cause if isinstance(error, FlowExecutionError) else error
+    return evidence_is_optional() and isinstance(cause, UnverifiedPreconditionError)
+
+
+def raise_collected_failures(errors: list[Exception]) -> None:
+    """Keep the original exception and prefer real failures over missing prerequisites."""
+    def unverified(error: Exception) -> bool:
+        if isinstance(error, FlowExecutionError):
+            return isinstance(error.cause, UnverifiedPreconditionError)
+        return isinstance(error, UnverifiedPreconditionError)
+
+    if errors:
+        raise next((error for error in errors if not unverified(error)), errors[0])
+
+
+def exchange_detail(exchange: dict[str, object]) -> dict[str, object]:
+    """Return the request/response pair shown for one API or WebSocket step."""
+    response = exchange.get("result", exchange.get("response"))
+    if response is None and "error" in exchange:
+        response = {"error": exchange["error"]}
+    detail = {
+        "payloadSent": exchange.get("request"),
+        "responseReceived": response,
+    }
+    if isinstance(exchange.get("evidence"), dict):
+        detail["evidence"] = exchange["evidence"]
+    return detail
+
+
+def format_detail(value: object) -> str:
+    """Format a response, optionally showing exact credential values."""
+    show_secrets = os.getenv("REPORT_SHOW_SECRETS", "").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+    def sanitize(item: object) -> object:
+        if isinstance(item, dict):
+            sanitized = {}
+            for key, nested_item in item.items():
+                lowered_key = str(key).lower()
+                # Strict masking of all security secrets and tokens
+                if not show_secrets and any(
+                    secret_name in lowered_key
+                    for secret_name in (
+                        "password",
+                        "token",
+                        "devicetoken",
+                        "admintoken",
+                        "authorization",
+                        "secret",
+                        "apikey",
+                        "api_key",
+                        "accesskey",
+                        "secretkey",
+                    )
+                ):
+                    sanitized[key] = "<redacted>"
+                elif (
+                    any(label_key in lowered_key for label_key in ("label", "image", "contentbase64", "base64"))
+                    and isinstance(nested_item, str)
+                    and len(nested_item) > 120
+                ):
+                    kb_size = len(nested_item.encode("utf-8")) / 1024
+                    sanitized[key] = f"<Base64 Data: {kb_size:.1f} KB, prefix='{nested_item[:25]}...'>"
+                else:
+                    sanitized[key] = sanitize(nested_item)
+            return sanitized
+        if isinstance(item, list):
+            return [sanitize(nested_item) for nested_item in item]
+        if isinstance(item, tuple):
+            return [sanitize(nested_item) for nested_item in item]
+        if isinstance(item, str) and len(item) > 300 and item.startswith("iVBORw0KGgo"):
+            kb_size = len(item.encode("utf-8")) / 1024
+            return f"<Base64 Data: {kb_size:.1f} KB, prefix='{item[:25]}...'>"
+        return item
+
+    value = sanitize(value)
+
+    try:
+        return json.dumps(value, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        return repr(value)
+
+
+def run_step(
+    report: ExecutionReport,
+    step_name: str,
+    action: Callable[[], T],
+    detail: Detail | None = None,
+    success_message: str = "",
+    error_detail: ErrorDetail | None = None,
+    mark_remaining_on_error: bool = True,
+) -> T:
+    started_at = time.monotonic()
+    try:
+        result = action()
+    except Exception as exc:
+        detail_value: object = (
+            error_detail(exc)
+            if error_detail is not None
+            else {"error": f"{type(exc).__name__}: {exc}"}
+        )
+        record_error = f"{type(exc).__name__}: {sanitize_text(exc)}"
+        if isinstance(exc, UnverifiedPreconditionError):
+            report.unverified(step_name, time.monotonic() - started_at, record_error, detail_value)
+        else:
+            report.failed(step_name, time.monotonic() - started_at, record_error, detail_value)
+        if mark_remaining_on_error:
+            report.mark_remaining_not_executed()
+        raise FlowExecutionError(
+            report.flow_name,
+            step_name,
+            exc,
+            report,
+        ) from exc
+
+    if detail is None:
+        detail_value: object = result
+    elif callable(detail):
+        detail_value = detail(result)
+    else:
+        detail_value = detail
+
+    report.passed(
+        step_name,
+        time.monotonic() - started_at,
+        message=success_message,
+        detail=detail_value,
+    )
+    return result

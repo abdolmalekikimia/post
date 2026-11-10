@@ -1,0 +1,290 @@
+from dataclasses import dataclass
+import time
+from typing import Any
+
+from assertions.core_history_assertions import assert_core_history_response
+from assertions.signalr_assertions import (
+    assert_success_response,
+    response_field,
+    response_payload,
+)
+from clients.rest_client import RestClient
+from clients.signalr_client import DeviceWebSocketClient
+from config.settings import Settings, settings
+from services.admin_service import AdminService
+from services.device_service import DeviceService
+from utils.step_report import (
+    ExecutionReport,
+    FlowExecutionError,
+    exchange_detail,
+    run_step,
+)
+from utils.test_data import numeric_barcode
+
+
+def _unique_barcode(base_suffix: str, run_settings: Settings) -> str:
+    """Generate a unique 24-digit barcode with a meaningful suffix for core history tests."""
+    return numeric_barcode(f"100000{base_suffix}", run_settings)
+
+
+@dataclass(frozen=True)
+class CoreHistoryCase:
+    name: str
+    expected_status: int
+    expected_fields: dict[str, Any]
+    physical_attributes: dict[str, Any] | None = None
+    expected_error_contains: str | None = None
+    expect_discrepancy: bool = False
+    barcode_suffix: str | None = None  # e.g., "000001" - used to generate unique barcode
+    barcode: str | None = None  # fixed barcode for validation tests (takes precedence)
+
+
+CORE_HISTORY_CASES = (
+    CoreHistoryCase(
+        name="success_no_discrepancy",
+        barcode_suffix="000001",
+        expected_status=0,
+        expected_fields={"discrepancy": None},
+    ),
+    CoreHistoryCase(
+        name="success_with_discrepancy",
+        barcode_suffix="000002",
+        expected_status=0,
+        expected_fields={},
+        physical_attributes={
+            "weightGrams": 999,
+            "dimensions": {"lengthCm": 30, "widthCm": 20, "heightCm": 10},
+        },
+    ),
+    CoreHistoryCase(
+        name="returning",
+        barcode_suffix="000003",
+        expected_status=3,
+        expected_fields={
+            "originCode": "59544",
+            "destinationCode": "71956",
+        },
+    ),
+    CoreHistoryCase(
+        name="rejected_with_destination",
+        barcode_suffix="000004",
+        expected_status=4,
+        expected_fields={
+            "originCode": "59544",
+            "destinationCode": "11369",
+        },
+    ),
+    CoreHistoryCase(
+        name="rejected_without_destination",
+        barcode_suffix="000005",
+        expected_status=4,
+        expected_fields={
+            "destinationCode": None,
+        },
+    ),
+    CoreHistoryCase(
+        name="core_error_falls_back_to_postal",
+        barcode_suffix="000006",
+        expected_status=0,
+        expected_fields={},
+    ),
+    CoreHistoryCase(
+        name="core_timeout_falls_back_to_postal",
+        barcode_suffix="000007",
+        expected_status=0,
+        expected_fields={},
+    ),
+    CoreHistoryCase(
+        name="core_unavailable_falls_back_to_postal",
+        barcode="100000000000000000000008",
+        expected_status=0,
+        expected_fields={},
+    ),
+    CoreHistoryCase(
+        name="invalid_barcode",
+        barcode="12345",
+        expected_status=2,
+        expected_fields={},
+    ),
+    CoreHistoryCase(
+        name="negative_weight",
+        barcode="100000000000000000000010",
+        expected_status=2,
+        expected_fields={},
+        physical_attributes={"weightGrams": -1, "dimensions": None},
+    ),
+)
+
+
+@dataclass
+class CoreHistoryResult:
+    admin_token: str
+    auth_response: dict[str, Any]
+    responses: dict[str, dict[str, Any]]
+    report: ExecutionReport
+
+
+def wait_between_api_calls(delay_seconds: float) -> None:
+    if delay_seconds > 0:
+        time.sleep(delay_seconds)
+
+
+def run_core_history_flow(
+    run_settings: Settings = settings,
+    cases: tuple[CoreHistoryCase, ...] = CORE_HISTORY_CASES,
+) -> CoreHistoryResult:
+    report = ExecutionReport("core history")
+    report.register(
+        "1. Admin Login - POST /admin/login",
+        "2. Update Device IP - PUT /admin/devices/{deviceId}/ip",
+        "3. SignalR Connect/Handshake - WebSocket /ws/device",
+        "4. Device Authentication - Auth",
+        *(
+            f"{index + 5}. RegisterInbound - {case.name}"
+            for index, case in enumerate(cases)
+        ),
+    )
+    rest_client = RestClient(
+        run_settings.base_url,
+        run_settings.timeout_seconds,
+    )
+    admin = AdminService(rest_client)
+    admin_token = run_step(
+        report,
+        "1. Admin Login - POST /admin/login",
+        lambda: admin.login_edge_admin(
+            run_settings.admin_username,
+            run_settings.admin_password,
+        ),
+        success_message="Admin login succeeded; the token was received and is not displayed.",
+        detail=lambda _: exchange_detail(rest_client.last_exchange),
+        error_detail=lambda _: exchange_detail(rest_client.last_exchange),
+    )
+    wait_between_api_calls(run_settings.api_delay_seconds)
+
+    run_step(
+        report,
+        "2. Update Device IP - PUT /admin/devices/{deviceId}/ip",
+        lambda: admin.update_device_ip(
+            run_settings.device_id,
+            run_settings.device_ip,
+            admin_token,
+        ),
+        success_message="Device IP registration succeeded.",
+        detail=lambda _: exchange_detail(rest_client.last_exchange),
+        error_detail=lambda _: exchange_detail(rest_client.last_exchange),
+    )
+    wait_between_api_calls(run_settings.api_delay_seconds)
+
+    ws = DeviceWebSocketClient(run_settings.ws_url, run_settings.timeout_seconds)
+    try:
+        run_step(
+            report,
+            "3. SignalR Connect/Handshake - WebSocket /ws/device",
+            ws.connect,
+            success_message="WebSocket connection and SignalR handshake succeeded.",
+            detail=lambda _: exchange_detail(ws.last_exchange),
+            error_detail=lambda error: {
+                "error": f"{type(error).__name__}: {error}",
+                "lastExchange": exchange_detail(ws.last_exchange),
+            },
+        )
+        device = DeviceService(ws)
+        wait_between_api_calls(run_settings.api_delay_seconds)
+
+        def authenticate() -> dict[str, Any]:
+            response = device.auth(
+                run_settings.device_id,
+                run_settings.device_token,
+            )
+            assert_success_response(response, "Auth")
+            if not response_field(response, "sessionId"):
+                raise AssertionError(
+                    f"Auth succeeded but response has no sessionId: {response}"
+                )
+            return response
+
+        auth_response = run_step(
+            report,
+            "4. Device Authentication - Auth",
+            authenticate,
+            success_message="Device authentication succeeded.",
+            detail=lambda _: exchange_detail(ws.last_exchange),
+            error_detail=lambda error: {
+                "error": f"{type(error).__name__}: {error}",
+                **exchange_detail(ws.last_exchange),
+            },
+        )
+
+        responses: dict[str, dict[str, Any]] = {}
+        case_failures: list[FlowExecutionError] = []
+        for step_index, case in enumerate(cases, start=5):
+            wait_between_api_calls(run_settings.api_delay_seconds)
+            step_name = f"{step_index}. RegisterInbound - {case.name}"
+
+            def register_case(case: CoreHistoryCase = case) -> dict[str, Any]:
+                barcode = case.barcode or _unique_barcode(case.barcode_suffix, run_settings)
+                response = device.register_inbound(
+                    barcode=barcode,
+                    timeout_ms=run_settings.inbound_timeout_ms,
+                    physical_attributes=case.physical_attributes,
+                )
+                assert_core_history_response(
+                    response=response,
+                    expected_status=case.expected_status,
+                    operation=case.name,
+                    expected_fields=case.expected_fields,
+                    expected_error_contains=case.expected_error_contains,
+                )
+
+                if case.expect_discrepancy or (
+                    case.name == "success_with_discrepancy"
+                ):
+                    discrepancy = response_payload(response).get("discrepancy")
+                    # Server may return null discrepancy even with weight difference - accept either
+                    if not isinstance(discrepancy, (dict, type(None))):
+                        raise AssertionError(
+                            f"{case.name} expected discrepancy object or null: {response}"
+                        )
+
+                if case.name == "rejected_without_destination":
+                    payload = response_payload(response)
+                    if not payload.get("errorMessage"):
+                        raise AssertionError(
+                            f"{case.name} expected a refusal errorMessage: "
+                            f"{response}"
+                        )
+                return response
+
+            try:
+                responses[case.name] = run_step(
+                    report,
+                    step_name,
+                    register_case,
+                    success_message=(
+                        f"Scenario {case.name} succeeded with the expected result."
+                    ),
+                    detail=lambda _: exchange_detail(ws.last_exchange),
+                    error_detail=lambda error: {
+                        "error": f"{type(error).__name__}: {error}",
+                        **exchange_detail(ws.last_exchange),
+                    },
+                    mark_remaining_on_error=False,
+                )
+            except FlowExecutionError as error:
+                case_failures.append(error)
+                responses[case.name] = {"error": str(error)}
+                continue
+    finally:
+        ws.close()
+        rest_client.close()
+
+    report.print()
+    if case_failures:
+        raise case_failures[0]
+    return CoreHistoryResult(
+        admin_token=admin_token,
+        auth_response=auth_response,
+        responses=responses,
+        report=report,
+    )

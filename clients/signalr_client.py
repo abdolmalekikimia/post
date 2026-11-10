@@ -1,0 +1,347 @@
+import json
+import os
+import ssl
+import time
+from json import JSONDecodeError
+from types import MappingProxyType
+from typing import Any
+from uuid import uuid4
+
+from websocket import (
+    WebSocket,
+    WebSocketConnectionClosedException,
+    WebSocketTimeoutException,
+    create_connection,
+)
+
+DEFAULT_TIMEOUT_SECONDS = 10
+TARGET_BY_MESSAGE_TYPE = MappingProxyType(
+    {
+        "auth": "Auth",
+        "inbound.register": "RegisterInbound",
+        "inbound.supplement": "SupplementInbound",
+        "destination.assign": "AssignDestination",
+        "bag.close": "CloseBag",
+        "connectivity.check": "CheckConnectivity",
+    }
+)
+
+
+class DeviceWebSocketClient:
+    """Minimal SignalR JSON Hub Protocol client for one device connection."""
+
+    RECORD_SEPARATOR = "\x1e"
+    JSON_PROTOCOL = MappingProxyType({"protocol": "json", "version": 1})
+    PING_FRAME = MappingProxyType({"type": 6})
+
+    def __init__(
+        self,
+        ws_url: str,
+        timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        *,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        if timeout <= 0:
+            raise ValueError("WebSocket timeout must be greater than zero")
+        self.ws_url = f"{ws_url.rstrip('/')}/ws/device"
+        self.timeout = timeout
+        self.headers = dict(headers) if headers else None
+        self._socket: WebSocket | None = None
+        self._buffer: str = ""
+        self.last_exchange: dict[str, Any] = {}
+
+    def connect(self) -> dict[str, Any]:
+        if self._socket is not None:
+            self.close()
+
+        self._buffer = ""
+        protocol = dict(self.JSON_PROTOCOL)
+        self.last_exchange = {
+            "webSocketUrl": self.ws_url,
+            "request": protocol,
+        }
+        try:
+            sslopt = {}
+            if self.ws_url.startswith("wss://") and os.getenv("SSL_VERIFY", "1") != "1":
+                sslopt = {"cert_reqs": ssl.CERT_NONE, "check_hostname": False}
+            connection_options = {"header": [f"{key}: {value}" for key, value in self.headers.items()]} if self.headers else {}
+            self._socket = create_connection(
+                self.ws_url, timeout=self.timeout, sslopt=sslopt, **connection_options
+            )
+            self._send_frame(protocol)
+            handshake_frames = self._receive_handshake()
+        except Exception as exc:
+            # A 429 is a quota response. Reconnecting every ten seconds consumes
+            # more requests and hides the timestamp of the first rejection.
+            self.last_exchange["error"] = f"{type(exc).__name__}: {exc}"
+            self.close()
+            raise
+
+        details = {
+            "webSocketUrl": self.ws_url,
+            "request": protocol,
+            "response": handshake_frames,
+        }
+        self.last_exchange = details
+        return details
+
+    def close(self) -> None:
+        socket = self._socket
+        self._socket = None
+        self._buffer = ""
+        if socket is not None:
+            socket.close()
+
+    def keep_alive(self) -> None:
+        """Send a SignalR control ping without replacing business evidence."""
+        self._send_frame(dict(self.PING_FRAME))
+
+    @property
+    def local_ip(self) -> str | None:
+        """The actual local IP of this WebSocket connection, before NAT."""
+        transport = getattr(self._socket, "sock", None)
+        if transport is None:
+            return None
+        return str(transport.getsockname()[0])
+
+    def __enter__(self) -> "DeviceWebSocketClient":
+        self.connect()
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    @classmethod
+    def _decode_frames(cls, raw_response: str) -> list[dict[str, Any]]:
+        """Decode one or more JSON frames separated by SignalR's 0x1E byte."""
+        decoder = json.JSONDecoder()
+        frames: list[dict[str, Any]] = []
+
+        for chunk in raw_response.split(cls.RECORD_SEPARATOR):
+            chunk = chunk.strip()
+            while chunk:
+                try:
+                    frame, consumed = decoder.raw_decode(chunk)
+                except JSONDecodeError as exc:
+                    raise RuntimeError(
+                        f"Invalid SignalR JSON frame: {chunk!r}"
+                    ) from exc
+
+                if not isinstance(frame, dict):
+                    raise RuntimeError(
+                        f"Expected a SignalR JSON object frame, got: {frame!r}"
+                    )
+
+                frames.append(frame)
+                chunk = chunk[consumed:].lstrip()
+
+        if not frames:
+            raise RuntimeError(
+                f"SignalR returned no JSON frames: {raw_response!r}"
+            )
+
+        return frames
+
+    def _send_frame(self, message: dict[str, Any]) -> None:
+        if self._socket is None:
+            raise RuntimeError("WebSocket is not connected")
+
+        raw_message = json.dumps(message, separators=(",", ":"))
+        try:
+            self._socket.send(raw_message + self.RECORD_SEPARATOR)
+        except (
+            ConnectionResetError,
+            BrokenPipeError,
+            WebSocketConnectionClosedException,
+            WebSocketTimeoutException,
+        ) as exc:
+            self.close()
+            message_type = message.get("messageType") or message.get("target", "unknown")
+            raise RuntimeError(
+                f"Remote host closed the WebSocket while sending "
+                f"'{message_type}'. Check deviceId, deviceToken, and allowed source IP."
+            ) from exc
+
+    def _receive_frames(self, timeout: float | None = None) -> list[dict[str, Any]]:
+        if self._socket is None:
+            raise RuntimeError("WebSocket is not connected")
+
+        if timeout is not None:
+            self._socket.settimeout(timeout)
+
+        while self.RECORD_SEPARATOR not in self._buffer:
+            raw_response = self._socket.recv()
+            if isinstance(raw_response, bytes):
+                raw_response = raw_response.decode("utf-8")
+            if not isinstance(raw_response, str):
+                raise RuntimeError("Expected a text SignalR WebSocket response")
+            self._buffer += raw_response
+
+        frames, self._buffer = self._decode_buffered_frames(self._buffer)
+        return frames
+
+    @classmethod
+    def _decode_buffered_frames(cls, buffer: str) -> tuple[list[dict[str, Any]], str]:
+        """Decode complete JSON frames from buffer and return (frames, remaining_buffer)."""
+        if cls.RECORD_SEPARATOR not in buffer:
+            return [], buffer
+
+        parts = buffer.split(cls.RECORD_SEPARATOR)
+        remaining = parts[-1]
+        complete_chunks = parts[:-1]
+
+        decoder = json.JSONDecoder()
+        frames: list[dict[str, Any]] = []
+
+        for chunk in complete_chunks:
+            chunk = chunk.strip()
+            while chunk:
+                try:
+                    frame, consumed = decoder.raw_decode(chunk)
+                except JSONDecodeError as exc:
+                    raise RuntimeError(
+                        f"Invalid SignalR JSON frame: {chunk!r}"
+                    ) from exc
+
+                if not isinstance(frame, dict):
+                    raise RuntimeError(
+                        f"Expected a SignalR JSON object frame, got: {frame!r}"
+                    )
+
+                frames.append(frame)
+                chunk = chunk[consumed:].lstrip()
+
+        return frames, remaining
+
+    def _receive_handshake(self) -> list[dict[str, Any]]:
+        frames = self._receive_frames()
+        self.last_exchange["response"] = frames
+        for frame in frames:
+            if frame.get("error"):
+                raise RuntimeError(f"SignalR handshake failed: {frame['error']}")
+
+        # A successful JSON Hub Protocol handshake is an empty JSON object.
+        if not any(frame == {} for frame in frames):
+            raise RuntimeError(
+                f"Unexpected SignalR handshake response: {frames}"
+            )
+        return frames
+
+    def invoke(
+        self,
+        target: str,
+        arguments: list[Any],
+        invocation_id: str | None = None,
+    ) -> dict[str, Any]:
+        if self._socket is None:
+            raise RuntimeError("WebSocket is not connected")
+
+        invocation_id = invocation_id or str(uuid4())
+        request = {
+            "type": 1,
+            "invocationId": invocation_id,
+            "target": target,
+            "arguments": arguments,
+        }
+        self.last_exchange = {
+            "webSocketUrl": self.ws_url,
+            "request": request,
+        }
+        self._send_frame(request)
+
+        deadline = time.monotonic() + self.timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Timed out waiting for SignalR invocation '{target}' "
+                    f"(invocationId={invocation_id})"
+                )
+
+            try:
+                frames = self._receive_frames(remaining)
+            except WebSocketTimeoutException as exc:
+                raise TimeoutError(
+                    f"Timed out waiting for SignalR invocation '{target}' "
+                    f"(invocationId={invocation_id})"
+                ) from exc
+            except (
+                WebSocketConnectionClosedException,
+                ConnectionResetError,
+                BrokenPipeError,
+            ) as exc:
+                self.close()
+                raise RuntimeError(
+                    f"Remote host closed the WebSocket while waiting for "
+                    f"'{target}' response."
+                ) from exc
+
+            for frame in frames:
+                frame_type = frame.get("type")
+
+                if frame_type == 6:
+                    # SignalR ping/keep-alive frame: reply with ping to maintain connection
+                    try:
+                        self._send_frame(dict(self.PING_FRAME))
+                    except Exception:
+                        pass
+                    continue
+
+                if frame_type == 7:
+                    self.last_exchange["response"] = frame
+                    raise RuntimeError(
+                        f"SignalR closed the connection: {frame.get('error')}"
+                    )
+
+                if frame_type != 3:
+                    continue
+
+                if frame.get("invocationId") != invocation_id:
+                    continue
+
+                if frame.get("error"):
+                    self.last_exchange["response"] = frame
+                    raise RuntimeError(
+                        f"SignalR invocation '{target}' failed: {frame['error']}"
+                    )
+
+                result = frame.get("result")
+                if not isinstance(result, dict):
+                    self.last_exchange["response"] = frame
+                    raise RuntimeError(
+                        f"SignalR invocation '{target}' returned an invalid "
+                        f"result: {frame}"
+                    )
+
+                received_correlation_id = result.get("correlationId")
+                if (
+                    received_correlation_id is not None
+                    and str(received_correlation_id) != invocation_id
+                ):
+                    self.last_exchange["response"] = frame
+                    raise RuntimeError(
+                        f"SignalR response correlationId mismatch for "
+                        f"'{target}': sent={invocation_id!r}, "
+                        f"received={received_correlation_id!r}"
+                    )
+
+                self.last_exchange = {
+                    "webSocketUrl": self.ws_url,
+                    "request": request,
+                    "response": frame,
+                    "result": result,
+                }
+                return result
+
+    def send_message(self, message: dict[str, Any]) -> dict[str, Any]:
+        """Backward-compatible wrapper for the device envelope API."""
+        message_type = message.get("messageType")
+        target = TARGET_BY_MESSAGE_TYPE.get(message_type)
+        if target is None:
+            raise ValueError(f"Unsupported device messageType: {message_type!r}")
+
+        return self.invoke(
+            target,
+            [message],
+            invocation_id=message.get("correlationId"),
+        )

@@ -1,0 +1,7 @@
+pytest>=8.0
+python-dotenv>=1.0
+requests>=2.31
+websocket-client>=1.8
+Pillow>=10.0
+paramiko>=3.4
+pyzbar>=0.1.9
