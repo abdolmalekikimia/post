@@ -21,7 +21,17 @@ checks and documented evidence support the stated validation scope.
 
 A sanitized **QA and AI-assisted Test Automation Portfolio Project** demonstrating Clean Architecture, Domain-Driven Design (DDD), resilient protocol engines (REST & SignalR/WebSocket), core parcel sorting integration flows, resilience simulations, and step-level test observability.
 
-This repository is a portfolio representation designed to demonstrate advanced software quality engineering practices. End-to-end and stress tests run against configurable mock or demo services.
+> **This is a showcase to read, not a project to run end to end.**
+> The scenario suites were written and executed against a real Edge and Core service inside a private company
+> network. That environment cannot be reached from outside, so nobody else can run those tests, and they are not
+> meant to be. They are published to show how the work is designed: the scenarios, the assertions, the reports,
+> the bug reports and the way blocked or undecided requirements are handled.
+>
+> What you can run yourself, offline and without any service: `python -m pytest tests/unit -q` and
+> `python -m pytest -q` (live tests are skipped unless `RUN_E2E=1` is set). Every host, credential and identifier in
+> this repository is a placeholder.
+
+This repository is a portfolio representation designed to demonstrate software quality engineering practices: scenario design, contract and negative testing, root-cause-labelled skips, and step-level reporting.
 
 ---
 
